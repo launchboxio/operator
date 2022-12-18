@@ -67,33 +67,34 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		Namespace: s.Namespace,
 		Name:      s.Name,
 	}
-
 	if err := space.Install(vclusterOpts); err != nil {
 		return ctrl.Result{}, err
 	}
 	fmt.Println("Space successfully started, checking for addons")
-	// TODO: Configure the addons installer for vcluster
 
+	// TODO: Configure the addons installer for vcluster
 	vclusterSecret := &v1.Secret{}
-	err = r.Get(ctx, types.NamespacedName{
+	if err = r.Get(ctx, types.NamespacedName{
 		Name:      fmt.Sprintf("vc-%s", s.Name),
 		Namespace: s.Namespace,
-	}, vclusterSecret)
-	if err != nil {
+	}, vclusterSecret); err != nil {
 		return ctrl.Result{}, err
 	}
-	vclusterKubeConfig := string(vclusterSecret.Data["config"])
-	client := genericclioptions.NewConfigFlags(false)
-	client.KubeConfig = &vclusterKubeConfig
 
-	installer := addons.NewInstaller(client)
+	vclusterKubeConfig := string(vclusterSecret.Data["config"])
+	iClient := genericclioptions.NewConfigFlags(false)
+	iClient.KubeConfig = &vclusterKubeConfig
+
+	installer := addons.NewInstaller(iClient)
 	for _, r := range s.Spec.Repos {
-		err = installer.InitRepo(&repo.Entry{
+		if err = installer.InitRepo(&repo.Entry{
 			Name:     r.Name,
 			URL:      r.Url,
 			Username: r.Username,
 			Password: r.Password,
-		})
+		}); err != nil {
+			return ctrl.Result{}, err
+		}
 		fmt.Printf("[%s/%s] Repo %s successfully initialized\n", s.Namespace, s.Name, r.Name)
 	}
 
@@ -108,11 +109,11 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			fmt.Printf("[%s/%s] Addon %s/%s already installed\n", s.Namespace, s.Name, addon.Namespace, addon.Name)
 			continue
 		}
-		_, err = installer.Ensure(&addon.HelmRef)
-		if err != nil {
-			// TODO: Commit release error to cluster status
+
+		if _, err = installer.Ensure(&addon.HelmRef); err != nil {
 			return ctrl.Result{}, err
 		}
+
 		// TODO: Commit release spec to cluster status
 		// Requeue to install the next helm chart
 		return ctrl.Result{Requeue: true}, nil

@@ -58,8 +58,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	clientConfig := kube.GetConfig("/Users/rwittman/.kube/config", "launchboxhq", "default")
 
 	cluster := &corev1alpha1.Cluster{}
-	err := r.Get(ctx, req.NamespacedName, cluster)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -72,12 +71,14 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Url:  "https://charts.loft.sh",
 	})
 	for _, r := range repos {
-		err = installer.InitRepo(&repo.Entry{
+		if err := installer.InitRepo(&repo.Entry{
 			Name:     r.Name,
 			URL:      r.Url,
 			Username: r.Username,
 			Password: r.Password,
-		})
+		}); err != nil {
+			return ctrl.Result{}, err
+		}
 		fmt.Printf("[Cluster] Repo %s successfully initialized\n", r.Name)
 	}
 
@@ -91,8 +92,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			fmt.Printf("[Cluster] Addon %s/%s already installed\n", addon.Namespace, addon.Name)
 			continue
 		}
-		_, err = installer.Ensure(&addon.HelmRef)
-		if err != nil {
+		if _, err = installer.Ensure(&addon.HelmRef); err != nil {
 			// TODO: Commit release error to cluster status
 			return ctrl.Result{}, err
 		}
