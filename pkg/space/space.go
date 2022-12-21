@@ -1,10 +1,11 @@
 package space
 
 import (
-	"fmt"
+	"bytes"
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/pkg/addons"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"text/template"
 )
 
 type InstallOpts struct {
@@ -15,6 +16,9 @@ type InstallOpts struct {
 	Version     string
 	Client      genericclioptions.RESTClientGetter
 	ServiceType string
+	DiskSize    int64
+	CidrRanges  []string
+	DnsHostName string
 }
 
 func Install(opts *InstallOpts) error {
@@ -29,12 +33,11 @@ func Install(opts *InstallOpts) error {
 		},
 	}
 
-	if opts.ServiceType != "" {
-		addon.HelmRef.Values = fmt.Sprintf(`
-service:
-  type: %s
-`, opts.ServiceType)
+	values, err := generateValues(opts)
+	if err != nil {
+		return err
 	}
+	addon.HelmRef.Values = values
 	installer := addons.NewInstaller(opts.Client)
 	release, err := installer.Exists(&addon.HelmRef)
 	if err != nil {
@@ -51,4 +54,38 @@ service:
 	}
 
 	return nil
+}
+
+func generateValues(opts *InstallOpts) (string, error) {
+	values := ` 
+service:
+  {{- if opts.ServiceType }}
+  type: {{ opts.ServiceType }}
+  {{- else }}
+  type: ClusterIP
+  {{- end }}
+
+  {{- with opts.CidrRanges }}
+  loadBalancerSourceRanges: {{ toYaml . | nindent 4 }}
+  {{- end }}
+
+storage:
+  {{- if opts.DiskSize }}
+  size: {{ opts.DiskSize }}
+  {{- else }}
+  size: 50Gi
+  {{- end }}
+
+{{- with opts.DnsHostName }}
+ingress:
+  hostname: {{ . }}
+{{- end }}
+`
+	tmpl, err := template.New("test").Parse(values)
+	if err != nil {
+		return "", err
+	}
+	buf := &bytes.Buffer{}
+	err = tmpl.Execute(buf, opts)
+	return buf.String(), err
 }
