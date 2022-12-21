@@ -54,8 +54,8 @@ type ClusterReconciler struct {
 func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	// TODO: Get this from somewhere else
-	clientConfig := kube.GetConfig("/Users/rwittman/.kube/config", "launchboxhq", "default")
+	// TODO: Get this from somewhere else obviously
+	clientConfig := kube.GetConfig("/Users/rwittman/.kube/config", "minikube", "default")
 
 	cluster := &corev1alpha1.Cluster{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
@@ -82,7 +82,9 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		fmt.Printf("[Cluster] Repo %s successfully initialized\n", r.Name)
 	}
 
+	// TODO: Handle removal of addons from the cluster
 	for _, addon := range cluster.Spec.Addons {
+
 		// Check if the release is already installed? If it is, continue
 		release, err := installer.Exists(&addon.HelmRef)
 		if err != nil {

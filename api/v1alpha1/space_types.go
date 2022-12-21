@@ -33,11 +33,12 @@ type SpaceAddonSpec struct {
 
 // SpaceSpec defines the desired state of Space
 type SpaceSpec struct {
-	Users      []UserAccessSpec  `json:"users"`
-	Resources  SpaceResourceSpec `json:"resources,omitempty"`
-	Repos      []HelmRepo        `json:"repos"`
-	Addons     []SpaceAddonSpec  `json:"addons"`
-	Parameters map[string]string `json:"parameters,omitempty"`
+	Users       []UserAccessSpec  `json:"users"`
+	Resources   SpaceResourceSpec `json:"resources,omitempty"`
+	Repos       []HelmRepo        `json:"repos"`
+	Addons      []SpaceAddonSpec  `json:"addons"`
+	Parameters  map[string]string `json:"parameters,omitempty"`
+	ServiceType string            `json:"serviceType,omitempty"`
 }
 
 type SpaceResourceSpec struct {

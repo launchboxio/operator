@@ -14,7 +14,11 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/kubernetes"
 	"log"
 	"os"
 	"path/filepath"
@@ -93,6 +97,10 @@ func (i *Installer) Ensure(a *v1alpha1.HelmRef) (*release.Release, error) {
 		}
 	}
 
+	if err = i.EnsureNamespace(a.Namespace); err != nil {
+		return nil, err
+	}
+
 	if client.Install {
 		hClient := action.NewHistory(actionConfig)
 		hClient.Max = 1
@@ -105,7 +113,6 @@ func (i *Installer) Ensure(a *v1alpha1.HelmRef) (*release.Release, error) {
 		}
 	}
 
-	fmt.Println("Upgrading our helm chart...")
 	return client.Run(a.Name, chartReq, values)
 }
 
@@ -150,6 +157,32 @@ func (i *Installer) InitRepo(c *repo.Entry) error {
 
 	if err := f.WriteFile(i.Settings.RepositoryConfig, 0644); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (i *Installer) EnsureNamespace(namespace string) error {
+	rc, err := i.Client.ToRESTConfig()
+	if err != nil {
+		return err
+	}
+	clientset, err := kubernetes.NewForConfig(rc)
+	if err != nil {
+		return err
+	}
+	_, err = clientset.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
+	// A non-IsNotFound error was returned
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		_, err := clientset.CoreV1().Namespaces().Create(context.TODO(), &v1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: namespace},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

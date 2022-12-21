@@ -20,11 +20,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/launchboxio/operator/pkg/addons"
+	"gopkg.in/yaml.v3"
+	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/repo"
+	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -59,14 +63,22 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	s := &corev1alpha1.Space{}
 	err := r.Get(ctx, req.NamespacedName, s)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
+
+	hostConfig := kube.GetConfig("/Users/rwittman/.kube/config", "minikube", "default")
 
 	// TODO: Install the vcluster helm chart
 	vclusterOpts := &space.InstallOpts{
 		Namespace: s.Namespace,
 		Name:      s.Name,
+		Client:    hostConfig,
 	}
+
+	if _, present := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !present {
+		vclusterOpts.ServiceType = "LoadBalancer"
+	}
+
 	if err := space.Install(vclusterOpts); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -81,9 +93,34 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	vclusterKubeConfig := string(vclusterSecret.Data["config"])
+	vclusterService := &v1.Service{}
+	if err = r.Get(ctx, types.NamespacedName{
+		Namespace: s.Namespace,
+		Name:      s.Name,
+	}, vclusterService); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	file, err := ioutil.TempFile("/tmp", "vckc")
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	defer os.Remove(file.Name())
+
+	kubeConfigContent := vclusterSecret.Data["config"]
+	if _, present := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !present {
+		// We aren't running in the cluster. We assume we'll have a single space,
+		// and just proxy to 443 for the space
+		kubeConfigContent, err = generateVclusterKubeConfig(vclusterSecret.Data["config"], "https://127.0.0.1:443")
+	}
+
+	if err := os.WriteFile(file.Name(), kubeConfigContent, 0644); err != nil {
+		return ctrl.Result{}, err
+	}
+	kubeConfig := file.Name()
 	iClient := genericclioptions.NewConfigFlags(false)
-	iClient.KubeConfig = &vclusterKubeConfig
+	iClient.KubeConfig = &kubeConfig
 
 	installer := addons.NewInstaller(iClient)
 	for _, r := range s.Spec.Repos {
@@ -98,6 +135,7 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		fmt.Printf("[%s/%s] Repo %s successfully initialized\n", s.Namespace, s.Name, r.Name)
 	}
 
+	// TODO: Handle removal of addons from the space
 	for _, addon := range s.Spec.Addons {
 		// Check if the release is already installed? If it is, continue
 		release, err := installer.Exists(&addon.HelmRef)
@@ -129,4 +167,69 @@ func (r *SpaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.Space{}).
 		Complete(r)
+}
+
+func generateVclusterKubeConfig(kubeconfig []byte, newHost string) ([]byte, error) {
+	result := &KubeConfigValue{}
+	if err := yaml.Unmarshal(kubeconfig, result); err != nil {
+		return nil, err
+	}
+	result.Clusters[0].Cluster.Server = newHost
+	return yaml.Marshal(result)
+}
+
+// KubeConfigValue is a struct used to create a kubectl configuration YAML file.
+type KubeConfigValue struct {
+	APIVersion     string                   `yaml:"apiVersion"`
+	Kind           string                   `yaml:"kind"`
+	Clusters       []KubeconfigNamedCluster `yaml:"clusters"`
+	Users          []KubeconfigUser         `yaml:"users"`
+	Contexts       []KubeconfigNamedContext `yaml:"contexts"`
+	CurrentContext string                   `yaml:"current-context"`
+	Preferences    struct{}                 `yaml:"preferences"`
+}
+
+// KubeconfigUser is a struct used to create a kubectl configuration YAML file
+type KubeconfigUser struct {
+	Name string                `yaml:"name"`
+	User KubeconfigUserKeyPair `yaml:"user"`
+}
+
+// KubeconfigUserKeyPair is a struct used to create a kubectl configuration YAML file
+type KubeconfigUserKeyPair struct {
+	ClientCertificateData string                 `yaml:"client-certificate-data"`
+	ClientKeyData         string                 `yaml:"client-key-data"`
+	AuthProvider          KubeconfigAuthProvider `yaml:"auth-provider,omitempty"`
+}
+
+// KubeconfigAuthProvider is a struct used to create a kubectl authentication provider
+type KubeconfigAuthProvider struct {
+	Name   string            `yaml:"name"`
+	Config map[string]string `yaml:"config"`
+}
+
+// KubeconfigNamedCluster is a struct used to create a kubectl configuration YAML file
+type KubeconfigNamedCluster struct {
+	Name    string            `yaml:"name"`
+	Cluster KubeconfigCluster `yaml:"cluster"`
+}
+
+// KubeconfigCluster is a struct used to create a kubectl configuration YAML file
+type KubeconfigCluster struct {
+	Server                   string `yaml:"server"`
+	CertificateAuthorityData string `yaml:"certificate-authority-data"`
+	CertificateAuthority     string `yaml:"certificate-authority"`
+}
+
+// KubeconfigNamedContext is a struct used to create a kubectl configuration YAML file
+type KubeconfigNamedContext struct {
+	Name    string            `yaml:"name"`
+	Context KubeconfigContext `yaml:"context"`
+}
+
+// KubeconfigContext is a struct used to create a kubectl configuration YAML file
+type KubeconfigContext struct {
+	Cluster   string `yaml:"cluster"`
+	Namespace string `yaml:"namespace,omitempty"`
+	User      string `yaml:"user"`
 }

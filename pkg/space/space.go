@@ -1,18 +1,20 @@
 package space
 
 import (
+	"fmt"
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/pkg/addons"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 type InstallOpts struct {
-	Namespace string
-	Name      string
-	Repo      string
-	Chart     string
-	Version   string
-	Client    genericclioptions.RESTClientGetter
+	Namespace   string
+	Name        string
+	Repo        string
+	Chart       string
+	Version     string
+	Client      genericclioptions.RESTClientGetter
+	ServiceType string
 }
 
 func Install(opts *InstallOpts) error {
@@ -25,6 +27,13 @@ func Install(opts *InstallOpts) error {
 			Name:      opts.Name,
 			Version:   opts.Version,
 		},
+	}
+
+	if opts.ServiceType != "" {
+		addon.HelmRef.Values = fmt.Sprintf(`
+service:
+  type: %s
+`, opts.ServiceType)
 	}
 	installer := addons.NewInstaller(opts.Client)
 	release, err := installer.Exists(&addon.HelmRef)
@@ -40,5 +49,6 @@ func Install(opts *InstallOpts) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }

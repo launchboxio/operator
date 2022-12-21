@@ -14,5 +14,27 @@ spec:
   repos:
     - name: bitnami
       url: https://charts.bitnami.com/bitnami
-  addons: []
-
+  addons:
+    - repo: bitnami
+      chart: redis
+      version: 7.0.7
+      namespace: default
+      name: redis
+      values: |
+        architecture: standalone
+        auth:
+          enabled: true
+        master:
+          count: 1
+        rbac:
+          create: true
+    - repo: bitnami
+      chart: mysql
+      version: ""
+      namespace: default
+      name: mysql
+      values: |
+        architecture: standalone
+        auth:
+          database: launchboxhq
+          username: launchboxhq

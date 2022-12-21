@@ -84,6 +84,8 @@ spec:
                     format: int64
                     type: integer
                 type: object
+              serviceType:
+                type: string
               users:
                 items:
                   description: 'EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
