@@ -27,18 +27,19 @@ type UserAccessSpec struct {
 	Role string `json:"role"`
 }
 
-type SpaceAddonSpec struct {
-	HelmRef `json:",inline"`
-}
+//
+//type SpaceAddonSpec struct {
+//	HelmRef `json:",inline"`
+//}
 
 // SpaceSpec defines the desired state of Space
 type SpaceSpec struct {
-	Users       []UserAccessSpec  `json:"users"`
-	Resources   SpaceResourceSpec `json:"resources,omitempty"`
-	Repos       []HelmRepo        `json:"repos"`
-	Addons      []SpaceAddonSpec  `json:"addons"`
-	Parameters  map[string]string `json:"parameters,omitempty"`
-	ServiceType string            `json:"serviceType,omitempty"`
+	Users     []UserAccessSpec  `json:"users"`
+	Resources SpaceResourceSpec `json:"resources,omitempty"`
+	//Repos       []HelmRepo        `json:"repos"`
+	//Addons      []SpaceAddonSpec  `json:"addons"`
+	//Parameters  map[string]string `json:"parameters,omitempty"`
+	ServiceType string `json:"serviceType,omitempty"`
 }
 
 type SpaceResourceSpec struct {
@@ -50,6 +51,8 @@ type SpaceResourceSpec struct {
 type SpaceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Host  string `json:"host,omitempty"`
+	CaCrt string `json:"caCrt,omitempty"`
 }
 
 //+kubebuilder:object:root=true

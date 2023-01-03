@@ -35,28 +35,8 @@ spec:
           spec:
             description: ClusterSpec defines the desired state of Cluster
             properties:
-              addons:
-                items:
-                  properties:
-                    chart:
-                      type: string
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                    repo:
-                      type: string
-                    values:
-                      type: string
-                    version:
-                      type: string
-                  required:
-                  - chart
-                  - namespace
-                  - repo
-                  type: object
-                type: array
               config:
+                description: Addons   []ClusterAddonSpec  `json:"addons"` Repos    []HelmRepo          `json:"repos"`
                 properties:
                   dnsZone:
                     type: string
@@ -85,38 +65,13 @@ spec:
                         type: integer
                     type: object
                 type: object
-              repos:
-                items:
-                  properties:
-                    name:
-                      type: string
-                    password:
-                      type: string
-                    url:
-                      type: string
-                    username:
-                      type: string
-                  required:
-                  - name
-                  - url
-                  type: object
-                type: array
             required:
-            - addons
             - config
             - defaults
-            - repos
             type: object
           status:
             description: ClusterStatus defines the observed state of Cluster
             properties:
-              addons:
-                items:
-                  properties:
-                    state:
-                      type: string
-                  type: object
-                type: array
               state:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                   of cluster Important: Run "make" to regenerate code after modifying

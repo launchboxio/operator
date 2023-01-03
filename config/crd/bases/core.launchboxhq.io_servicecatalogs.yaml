@@ -39,6 +39,29 @@ spec:
                 items:
                   properties:
                     git:
+                      properties:
+                        auth:
+                          description: Auth defines the authentication method for
+                            git
+                          properties:
+                            token:
+                              description: Token Specify a token for cloning git repos.
+                                This can be configured globally at the space level,
+                                or for private installs, at the operator level
+                              type: string
+                          required:
+                          - token
+                          type: object
+                        host:
+                          description: Host defines the hostname of the git provider.
+                            Defaults to "github.com?
+                          type: string
+                        repository:
+                          description: Repository is the "${owner}/${project}" name
+                            for a repo
+                          type: string
+                      required:
+                      - repository
                       type: object
                     helm:
                       properties:

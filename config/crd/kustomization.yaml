@@ -5,6 +5,7 @@ resources:
 - bases/core.launchboxhq.io_servicecatalogs.yaml
 - bases/core.launchboxhq.io_spaces.yaml
 - bases/core.launchboxhq.io_clusters.yaml
+- bases/core.launchboxhq.io_addons.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
@@ -13,6 +14,7 @@ patchesStrategicMerge:
 #- patches/webhook_in_servicecatalogs.yaml
 #- patches/webhook_in_spaces.yaml
 #- patches/webhook_in_clusters.yaml
+#- patches/webhook_in_addons.yaml
 #+kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.
@@ -20,6 +22,7 @@ patchesStrategicMerge:
 #- patches/cainjection_in_servicecatalogs.yaml
 #- patches/cainjection_in_spaces.yaml
 #- patches/cainjection_in_clusters.yaml
+#- patches/cainjection_in_addons.yaml
 #+kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # the following config is for teaching kustomize how to do kustomization for CRDs.

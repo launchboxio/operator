@@ -42,11 +42,19 @@ type RawSpec struct {
 	Path string `json:"raw"`
 }
 
-type Addon struct {
-	HelmRef
+type GitRef struct {
+	// Host defines the hostname of the git provider. Defaults to "github.com?
+	Host string `json:"host,omitempty"`
+	// Repository is the "${owner}/${project}" name for a repo
+	Repository string `json:"repository"`
+	// Auth defines the authentication method for git
+	Auth GitAuth `json:"auth,omitempty"`
 }
 
-type GitRef struct {
+type GitAuth struct {
+	// Token Specify a token for cloning git repos. This can be configured globally at the
+	// space level, or for private installs, at the operator level
+	Token string `json:"token"`
 }
 
 // ServiceCatalogStatus defines the observed state of ServiceCatalog

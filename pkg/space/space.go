@@ -2,9 +2,13 @@ package space
 
 import (
 	"bytes"
-	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
-	"github.com/launchboxio/operator/pkg/addons"
+	"fmt"
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"log"
+	"os"
 	"text/template"
 )
 
@@ -22,66 +26,79 @@ type InstallOpts struct {
 }
 
 func Install(opts *InstallOpts) error {
-	addon := &corev1alpha1.ClusterAddonSpec{
-		HelmRef: corev1alpha1.HelmRef{
-			// TODO: Allow configuring to eventually test beta releases
-			Repo:      "loft-sh",
-			Chart:     "vcluster",
-			Namespace: opts.Namespace,
-			Name:      opts.Name,
-			Version:   opts.Version,
-		},
-	}
-
-	values, err := generateValues(opts)
-	if err != nil {
+	actionConfig := new(action.Configuration)
+	if err := actionConfig.Init(opts.Client, opts.Namespace, os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
 		return err
 	}
-	addon.HelmRef.Values = values
-	installer := addons.NewInstaller(opts.Client)
-	release, err := installer.Exists(&addon.HelmRef)
+
+	client := action.NewUpgrade(actionConfig)
+	client.Install = true
+	client.Namespace = opts.Namespace
+
+	chart := fmt.Sprintf("%s/%s", opts.Repo, opts.Chart)
+	cp, err := client.ChartPathOptions.LocateChart(chart, nil)
 	if err != nil {
 		return err
 	}
 
-	if release != nil {
-		return nil
-	}
-
-	_, err = installer.Ensure(&addon.HelmRef)
+	chartReq, err := loader.Load(cp)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	if req := chartReq.Metadata.Dependencies; req != nil {
+		if err := action.CheckDependencies(chartReq, req); err != nil {
+			return err
+		}
+	}
+
+	// TODO: Use generate values to get the configurations
+	values := map[string]interface{}{}
+
+	hClient := action.NewHistory(actionConfig)
+	hClient.Max = 1
+	if _, err := hClient.Run(opts.Namespace); err == driver.ErrReleaseNotFound {
+		iClient := action.NewInstall(actionConfig)
+		iClient.Namespace = opts.Namespace
+		//iClient.Wait = true
+		iClient.ReleaseName = opts.Name
+		_, err = iClient.Run(chartReq, values)
+		return err
+	}
+
+	_, err = client.Run(opts.Name, chartReq, values)
+	return err
 }
 
 func generateValues(opts *InstallOpts) (string, error) {
 	values := ` 
 service:
-  {{- if opts.ServiceType }}
-  type: {{ opts.ServiceType }}
+  {{- if .ServiceType }}
+  type: {{ .ServiceType }}
   {{- else }}
   type: ClusterIP
   {{- end }}
 
-  {{- with opts.CidrRanges }}
-  loadBalancerSourceRanges: {{ toYaml . | nindent 4 }}
+  {{- if .CidrRanges }}
+  loadBalancerSourceRanges: 
+  {{ range .CidrRanges }}
+  - {{ . }}
+  {{- end }}
   {{- end }}
 
 storage:
-  {{- if opts.DiskSize }}
-  size: {{ opts.DiskSize }}
+  {{- if .DiskSize }}
+  size: {{ .DiskSize }}
   {{- else }}
   size: 50Gi
   {{- end }}
 
-{{- with opts.DnsHostName }}
+{{- with .DnsHostName }}
 ingress:
   hostname: {{ . }}
 {{- end }}
 `
-	tmpl, err := template.New("test").Parse(values)
+	tmpl, err := template.New("vcluster").Parse(values)
 	if err != nil {
 		return "", err
 	}

@@ -19,16 +19,11 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/launchboxio/operator/pkg/addons"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/repo"
-	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -75,14 +70,9 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		Client:    hostConfig,
 	}
 
-	if _, present := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !present {
-		vclusterOpts.ServiceType = "LoadBalancer"
-	}
-
 	if err := space.Install(vclusterOpts); err != nil {
 		return ctrl.Result{}, err
 	}
-	fmt.Println("Space successfully started, checking for addons")
 
 	// TODO: Configure the addons installer for vcluster
 	vclusterSecret := &v1.Secret{}
@@ -93,72 +83,80 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	vclusterService := &v1.Service{}
-	if err = r.Get(ctx, types.NamespacedName{
-		Namespace: s.Namespace,
-		Name:      s.Name,
-	}, vclusterService); err != nil {
-		return ctrl.Result{}, err
-	}
+	//
+	// This should all be moved to the ServiceCatalog controller
+	//
 
-	file, err := ioutil.TempFile("/tmp", "vckc")
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	//vclusterService := &v1.Service{}
+	//if err = r.Get(ctx, types.NamespacedName{
+	//	Namespace: s.Namespace,
+	//	Name:      s.Name,
+	//}, vclusterService); err != nil {
+	//	return ctrl.Result{}, err
+	//}
+	//
+	//file, err := ioutil.TempFile("/tmp", "vckc")
+	//if err != nil {
+	//	return ctrl.Result{}, err
+	//}
+	//
+	//defer os.Remove(file.Name())
+	//
+	//kubeConfigContent := vclusterSecret.Data["config"]
+	//if _, present := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !present {
+	//	// We aren't running in the cluster. We assume we'll have a single space,
+	//	// and just proxy to 443 for the space
+	//	kubeConfigContent, err = generateVclusterKubeConfig(vclusterSecret.Data["config"], "https://127.0.0.1:443")
+	//}
+	//
+	//if err := os.WriteFile(file.Name(), kubeConfigContent, 0644); err != nil {
+	//	return ctrl.Result{}, err
+	//}
+	//kubeConfig := file.Name()
+	//iClient := genericclioptions.NewConfigFlags(false)
+	//iClient.KubeConfig = &kubeConfig
+	//
+	//installer := addons.NewInstaller(iClient)
+	//// TODO: The repos need to be scoped to the space. Since helm installs originate from the operator,
+	//// we want to prevent name collisions, as well as prevent other spaces from installing charts from
+	//// another space's private repos
+	//for _, r := range s.Spec.Repos {
+	//	if err = installer.InitRepo(&repo.Entry{
+	//		Name:     r.Name,
+	//		URL:      r.Url,
+	//		Username: r.Username,
+	//		Password: r.Password,
+	//	}); err != nil {
+	//		return ctrl.Result{}, err
+	//	}
+	//	fmt.Printf("[%s/%s] Repo %s successfully initialized\n", s.Namespace, s.Name, r.Name)
+	//}
+	//
+	//// TODO: Handle removal of addons from the space
+	//for _, addon := range s.Spec.Addons {
+	//	// Check if the release is already installed? If it is, continue
+	//	release, err := installer.Exists(&addon.HelmRef)
+	//	if err != nil {
+	//		return ctrl.Result{}, err
+	//	}
+	//
+	//	if release != nil {
+	//		fmt.Printf("[%s/%s] Addon %s/%s already installed\n", s.Namespace, s.Name, addon.Namespace, addon.Name)
+	//		continue
+	//	}
+	//
+	//	if _, err = installer.Ensure(&addon.HelmRef); err != nil {
+	//		return ctrl.Result{}, err
+	//	}
+	//
+	//	// TODO: Commit release spec to cluster status
+	//	// Requeue to install the next helm chart
+	//	return ctrl.Result{Requeue: true}, nil
+	//}
 
-	defer os.Remove(file.Name())
-
-	kubeConfigContent := vclusterSecret.Data["config"]
-	if _, present := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !present {
-		// We aren't running in the cluster. We assume we'll have a single space,
-		// and just proxy to 443 for the space
-		kubeConfigContent, err = generateVclusterKubeConfig(vclusterSecret.Data["config"], "https://127.0.0.1:443")
-	}
-
-	if err := os.WriteFile(file.Name(), kubeConfigContent, 0644); err != nil {
-		return ctrl.Result{}, err
-	}
-	kubeConfig := file.Name()
-	iClient := genericclioptions.NewConfigFlags(false)
-	iClient.KubeConfig = &kubeConfig
-
-	installer := addons.NewInstaller(iClient)
-	for _, r := range s.Spec.Repos {
-		if err = installer.InitRepo(&repo.Entry{
-			Name:     r.Name,
-			URL:      r.Url,
-			Username: r.Username,
-			Password: r.Password,
-		}); err != nil {
-			return ctrl.Result{}, err
-		}
-		fmt.Printf("[%s/%s] Repo %s successfully initialized\n", s.Namespace, s.Name, r.Name)
-	}
-
-	// TODO: Handle removal of addons from the space
-	for _, addon := range s.Spec.Addons {
-		// Check if the release is already installed? If it is, continue
-		release, err := installer.Exists(&addon.HelmRef)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		if release != nil {
-			fmt.Printf("[%s/%s] Addon %s/%s already installed\n", s.Namespace, s.Name, addon.Namespace, addon.Name)
-			continue
-		}
-
-		if _, err = installer.Ensure(&addon.HelmRef); err != nil {
-			return ctrl.Result{}, err
-		}
-
-		// TODO: Commit release spec to cluster status
-		// Requeue to install the next helm chart
-		return ctrl.Result{Requeue: true}, nil
-	}
-
-	// TODO: Generate a configmap with the OIDC configuration
-
+	//
+	// End of service catalog migration
+	//
 	return ctrl.Result{}, nil
 }
 

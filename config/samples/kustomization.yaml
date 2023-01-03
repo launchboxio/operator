@@ -3,4 +3,5 @@ resources:
 - core_v1alpha1_servicecatalog.yaml
 - core_v1alpha1_space.yaml
 - core_v1alpha1_cluster.yaml
+- core_v1alpha1_addon.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

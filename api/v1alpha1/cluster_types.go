@@ -22,25 +22,11 @@ import (
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-type HelmRef struct {
-	Chart     string `json:"chart"`
-	Repo      string `json:"repo"`
-	Version   string `json:"version,omitempty"`
-	Namespace string `json:"namespace"`
-	Values    string `json:"values,omitempty"`
-	Name      string `json:"name,omitempty"`
-}
 
-type HelmRepo struct {
-	Name     string `json:"name"`
-	Url      string `json:"url"`
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-}
-
-type ClusterAddonSpec struct {
-	HelmRef `json:",inline"`
-}
+//
+//type ClusterAddonSpec struct {
+//	HelmRef `json:",inline"`
+//}
 
 type ClusterConfigSpec struct {
 	DnsZone string          `json:"dnsZone,omitempty"`
@@ -66,8 +52,8 @@ type ClusterDefaultsSpec struct {
 
 // ClusterSpec defines the desired state of Cluster
 type ClusterSpec struct {
-	Addons   []ClusterAddonSpec  `json:"addons"`
-	Repos    []HelmRepo          `json:"repos"`
+	//Addons   []ClusterAddonSpec  `json:"addons"`
+	//Repos    []HelmRepo          `json:"repos"`
 	Config   ClusterConfigSpec   `json:"config"`
 	Defaults ClusterDefaultsSpec `json:"defaults"`
 }
@@ -76,8 +62,8 @@ type ClusterSpec struct {
 type ClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	State  string               `json:"state,omitempty"`
-	Addons []ClusterAddonStatus `json:"addons,omitempty"`
+	State string `json:"state,omitempty"`
+	//Addons []ClusterAddonStatus `json:"addons,omitempty"`
 }
 
 type ClusterAddonStatus struct {

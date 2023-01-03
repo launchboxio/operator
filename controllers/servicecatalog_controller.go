@@ -51,11 +51,12 @@ func (r *ServiceCatalogReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// TODO(user): your logic here
 
-	// TODO(Configure / deploy space)
+	// TODO: Generate a dependency graph using an algorithm like below
+	// http://dnaeon.github.io/dependency-graph-resolution-algorithm-in-go/
 
-	// TODO(Install cluster addons)
-
-	// TODO(
+	// TODO: Install the service catalog
+	// Generate the service catalog
+	// Create the required addons, services, and automation components
 
 	return ctrl.Result{}, nil
 }
