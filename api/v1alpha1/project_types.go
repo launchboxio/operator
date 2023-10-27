@@ -32,17 +32,14 @@ type ProjectSpec struct {
 	Slug string `json:"slug"`
 	Id   string `json:"id"`
 
-	KubernetesVersion string `json:"kubernetesVersion"`
+	Paused bool `json:"paused,omitempty"`
 
-	Resources Resources `json:"resources,omitempty"`
-
-	OidcConfig *OidcConfig `json:"oidcConfig,omitempty"`
-
-	IngressHost string `json:"ingressHost,omitempty"`
-
-	Users []ProjectUser `json:"users,omitempty"`
-
-	Crossplane ProjectCrossplaneSpec `json:"crossplane,omitempty"`
+	KubernetesVersion string                `json:"kubernetesVersion"`
+	Resources         Resources             `json:"resources,omitempty"`
+	OidcConfig        *OidcConfig           `json:"oidcConfig,omitempty"`
+	IngressHost       string                `json:"ingressHost,omitempty"`
+	Users             []ProjectUser         `json:"users,omitempty"`
+	Crossplane        ProjectCrossplaneSpec `json:"crossplane,omitempty"`
 }
 
 type ProjectCrossplaneSpec struct {

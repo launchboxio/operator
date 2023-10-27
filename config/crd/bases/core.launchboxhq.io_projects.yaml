@@ -60,6 +60,8 @@ spec:
                 - clientId
                 - issuerUrl
                 type: object
+              paused:
+                type: boolean
               resources:
                 properties:
                   cpu:

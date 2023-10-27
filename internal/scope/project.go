@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/launchboxio/operator/api/v1alpha1"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -139,6 +140,45 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	// TODO: Install any subscribed addons
+
+	statefulSet := &appsv1.StatefulSet{}
+	if err := scope.Client.Get(ctx, types.NamespacedName{
+		Name:      identifier,
+		Namespace: identifier,
+	}, statefulSet); err != nil {
+		scope.Logger.Error(err, "Failed querying statefulset")
+		return ctrl.Result{}, err
+	}
+
+	var desiredReplicas int32
+	if scope.Project.Spec.Paused == true {
+		desiredReplicas = 0
+	} else {
+		desiredReplicas = 1
+	}
+
+	if *statefulSet.Spec.Replicas != desiredReplicas {
+		scope.Logger.Info(fmt.Sprintf("Updating statefulset to %d replicas", desiredReplicas))
+		statefulSet.Spec.Replicas = &desiredReplicas
+		if err := scope.Client.Update(ctx, statefulSet); err != nil {
+			scope.Logger.Error(err, "Failed updating desired replicas")
+			return ctrl.Result{}, err
+		}
+	}
+
+	// If paused, we also need to terminate all the running pods
+	if scope.Project.Spec.Paused == true {
+		pod := &v1.Pod{}
+		if err := scope.Client.DeleteAllOf(ctx, pod, []client.DeleteAllOfOption{
+			client.InNamespace(identifier),
+			client.MatchingLabels{"vcluster.loft.sh/managed-by": identifier},
+			client.GracePeriodSeconds(5),
+		}...); err != nil {
+			scope.Logger.Error(err, "Failed to delete running pods")
+			return ctrl.Result{}, err
+		}
+	}
+
 	return ctrl.Result{}, nil
 }
 
