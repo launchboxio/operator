@@ -3,22 +3,22 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
-  name: spaces.core.launchboxhq.io
+  name: projects.core.launchboxhq.io
 spec:
   group: core.launchboxhq.io
   names:
-    kind: Space
-    listKind: SpaceList
-    plural: spaces
-    singular: space
+    kind: Project
+    listKind: ProjectList
+    plural: projects
+    singular: project
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Space is the Schema for the spaces API
+        description: Project is the Schema for the projects API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,48 +33,68 @@ spec:
           metadata:
             type: object
           spec:
-            description: SpaceSpec defines the desired state of Space
+            description: ProjectSpec defines the desired state of Project
             properties:
+              crossplane:
+                properties:
+                  providers:
+                    items:
+                      type: string
+                    type: array
+                required:
+                - providers
+                type: object
+              id:
+                type: string
+              ingressHost:
+                type: string
+              kubernetesVersion:
+                type: string
+              oidcConfig:
+                properties:
+                  clientId:
+                    type: string
+                  issuerUrl:
+                    type: string
+                required:
+                - clientId
+                - issuerUrl
+                type: object
               resources:
                 properties:
                   cpu:
+                    format: int32
+                    type: integer
+                  disk:
+                    format: int32
                     type: integer
                   memory:
-                    format: int64
+                    format: int32
                     type: integer
                 type: object
-              serviceType:
-                description: Repos       []HelmRepo        `json:"repos"` Addons      []SpaceAddonSpec  `json:"addons"`
-                  Parameters  map[string]string `json:"parameters,omitempty"`
+              slug:
+                description: Foo is an example field of Project. Edit project_types.go
+                  to remove/update
                 type: string
               users:
                 items:
-                  description: 'EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-                    NOTE: json tags are required.  Any new fields you add must have
-                    json tags for the fields to be serialized.'
                   properties:
-                    role:
+                    clusterRole:
                       type: string
-                    user:
+                    email:
                       type: string
                   required:
-                  - role
-                  - user
+                  - clusterRole
+                  - email
                   type: object
                 type: array
             required:
-            - users
+            - id
+            - kubernetesVersion
+            - slug
             type: object
           status:
-            description: SpaceStatus defines the observed state of Space
-            properties:
-              caCrt:
-                type: string
-              host:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file'
-                type: string
+            description: ProjectStatus defines the observed state of Project
             type: object
         type: object
     served: true

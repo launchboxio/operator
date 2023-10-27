@@ -1,0 +1,28 @@
+apiVersion: core.launchboxhq.io/v1alpha1
+kind: Project
+metadata:
+  labels:
+    app.kubernetes.io/name: project
+    app.kubernetes.io/instance: project-sample
+    app.kubernetes.io/part-of: operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: operator
+  name: project-sample
+spec:
+  # TODO(user): Add fields here
+  slug: testing-launchboxhq
+  id: "1"
+  kubernetesVersion: 1.25.15
+  resources:
+    cpu: 2
+    memory: 1024
+    disk: 10
+  users:
+    - email: robkwittman@gmail.com
+      clusterRole: cluster-admin
+  oidcConfig:
+    issuerUrl: https://launchboxhq.dev
+    clientId: random-client-id
+  ingressHost: api.testing-launchboxhq.default.launchboxhq.dev
+
+

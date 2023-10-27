@@ -5,10 +5,19 @@ metadata:
   creationTimestamp: null
   name: manager-role
 rules:
+- resources:
+  - namespaces
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
 - apiGroups:
   - core.launchboxhq.io
   resources:
-  - addons
+  - projects
   verbs:
   - create
   - delete
@@ -20,91 +29,13 @@ rules:
 - apiGroups:
   - core.launchboxhq.io
   resources:
-  - addons/finalizers
+  - projects/finalizers
   verbs:
   - update
 - apiGroups:
   - core.launchboxhq.io
   resources:
-  - addons/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - clusters
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - clusters/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - clusters/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - servicecatalogs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - servicecatalogs/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - servicecatalogs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - spaces
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - spaces/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - core.launchboxhq.io
-  resources:
-  - spaces/status
+  - projects/status
   verbs:
   - get
   - patch

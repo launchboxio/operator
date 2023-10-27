@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -34,6 +35,13 @@ import (
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/controllers"
 	//+kubebuilder:scaffold:imports
+
+	// ClusterAPI resources
+	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	// Crossplane Resources
+	//crossplanehelm "github.com/crossplane-contrib/provider-helm/apis"
+	//crossplanek8s "github.com/crossplane-contrib/provider-kubernetes/apis"
 )
 
 var (
@@ -46,6 +54,11 @@ func init() {
 
 	utilruntime.Must(corev1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
+	utilruntime.Must(vclusterv1alpha1.AddToScheme(scheme))
+	//utilruntime.Must(crossplanehelm.AddToScheme(scheme))
+	//utilruntime.Must(crossplanek8s.AddToScheme(scheme))
 }
 
 func main() {
@@ -89,32 +102,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.ServiceCatalogReconciler{
+	if err = (&controllers.ProjectReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ServiceCatalog")
-		os.Exit(1)
-	}
-	if err = (&controllers.SpaceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Space")
-		os.Exit(1)
-	}
-	if err = (&controllers.ClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
-		os.Exit(1)
-	}
-	if err = (&controllers.AddonReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Addon")
+		setupLog.Error(err, "unable to create controller", "controller", "Project")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
