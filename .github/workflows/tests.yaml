@@ -1,0 +1,20 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  helm:
+    name: Test Helm Chart
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: azure/setup-helm@v3
+        with:
+          version: v3.10.3
+      - run: helm lint --strict deploy/charts/operator
