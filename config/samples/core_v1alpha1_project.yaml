@@ -24,5 +24,6 @@ spec:
     issuerUrl: https://launchboxhq.dev
     clientId: random-client-id
   ingressHost: api.testing-launchboxhq.default.launchboxhq.dev
+  paused: false
 
 
