@@ -21,6 +21,11 @@ import (
 	"github.com/launchboxio/operator/internal/scope"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	"os"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -55,18 +60,33 @@ type ProjectReconciler struct {
 func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
+	logger.Info("Starting reconcile")
 	project := &corev1alpha1.Project{}
 	err := r.Get(ctx, req.NamespacedName, project)
 	if err != nil {
+		// TODO: Operator is not deleting projects / namespaces as expected
 		if apierrors.IsNotFound(err) {
+			logger.Info("Resource not found, must be deleted")
 			return ctrl.Result{}, nil
 		}
+		logger.Error(err, "Failed lookup for project resource")
 		return ctrl.Result{}, err
 	}
 
-	logger = logger.WithValues("project", project.Spec.Slug)
+	projectLogger := logger.WithValues("project", project.Spec.Slug)
 
-	projectScope := scope.ProjectScope{Project: project, Logger: logger, Client: r.Client}
+	dynClient, err := r.LoadDynamicClient()
+	if err != nil {
+		projectLogger.Error(err, "Failed loading dynamic client")
+		return ctrl.Result{}, err
+	}
+
+	projectScope := scope.ProjectScope{
+		Project:       project,
+		Logger:        projectLogger,
+		Client:        r.Client,
+		DynamicClient: dynClient,
+	}
 	return projectScope.Reconcile(ctx, req)
 }
 
@@ -78,4 +98,25 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&clusterv1.Cluster{}).
 		Owns(&vclusterv1alpha1.VCluster{}).
 		Complete(r)
+}
+
+func (r *ProjectReconciler) LoadDynamicClient() (*dynamic.DynamicClient, error) {
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+
+		return dynamic.NewForConfig(config)
+
+	} else {
+		config, err := clientcmd.BuildConfigFromFlags(
+			"", homedir.HomeDir()+"/.kube/config",
+		)
+		if err != nil {
+			return nil, err
+		}
+		// create the clientset
+		return dynamic.NewForConfig(config)
+	}
 }

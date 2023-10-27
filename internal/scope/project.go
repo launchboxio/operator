@@ -3,22 +3,28 @@ package scope
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/launchboxio/operator/api/v1alpha1"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
 
 type ProjectScope struct {
-	Project *v1alpha1.Project
-	Logger  logr.Logger
-	Client  client.Client
+	Project       *v1alpha1.Project
+	Logger        logr.Logger
+	Client        client.Client
+	DynamicClient *dynamic.DynamicClient
 }
 
 func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
@@ -32,19 +38,24 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 	namespace := &v1.Namespace{}
 	if err := scope.Client.Get(ctx, types.NamespacedName{Name: identifier}, namespace); err != nil {
 		if apierrors.IsNotFound(err) {
-			// Create the namespace
-			err = scope.Client.Create(ctx, &v1.Namespace{
+			scope.Logger.Info("Creating namespace")
+			ns := &v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: identifier,
 				},
-			})
+			}
+			ctrl.SetControllerReference(scope.Project, ns, scope.Client.Scheme())
+			// Create the namespace
+			err = scope.Client.Create(ctx, ns)
 			return ctrl.Result{Requeue: true}, err
 		}
+		scope.Logger.Error(err, "Failed lookup for namespace")
 		return ctrl.Result{}, err
 	}
 
 	var values bytes.Buffer
 	if err := ValuesTemplate.Execute(&values, getValuesArgs(scope.Project)); err != nil {
+		scope.Logger.Error(err, "Failed generating vcluster values")
 		return ctrl.Result{}, err
 	}
 
@@ -55,6 +66,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		Namespace: identifier,
 	}, infrastructure); err != nil {
 		if apierrors.IsNotFound(err) {
+			scope.Logger.Info("Creating new vcluster resource")
 			// Create the namespace
 			err = scope.Client.Create(ctx, &vclusterv1alpha1.VCluster{
 				ObjectMeta: defaultMeta,
@@ -64,7 +76,8 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 						Port: 0,
 					},
 					HelmRelease: &vclusterv1alpha1.VirtualClusterHelmRelease{
-						Chart:  vclusterv1alpha1.VirtualClusterHelmChart{},
+						Chart: vclusterv1alpha1.VirtualClusterHelmChart{},
+						// TODO: We have to reconcile these as well, in the event they change
 						Values: values.String(),
 					},
 					KubernetesVersion: &kubernetesVersion,
@@ -72,6 +85,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 			})
 			return ctrl.Result{Requeue: true}, err
 		}
+		scope.Logger.Error(err, "Failed lookup for vcluster resource")
 		return ctrl.Result{}, err
 	}
 
@@ -81,6 +95,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		Namespace: identifier,
 	}, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
+			scope.Logger.Info("Creating new cluster resource")
 			err = scope.Client.Create(ctx, &clusterv1.Cluster{
 				ObjectMeta: defaultMeta,
 				Spec: clusterv1.ClusterSpec{
@@ -98,11 +113,28 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 			})
 			return ctrl.Result{Requeue: true}, err
 		}
+		scope.Logger.Error(err, "Failed lookup for cluster resource")
 		return ctrl.Result{}, err
 	}
 
 	// TODO: Wait for the vcluster instance to be ready
+	secret := &v1.Secret{}
+	if err := scope.Client.Get(ctx, types.NamespacedName{
+		Name:      "vc-" + identifier,
+		Namespace: identifier,
+	}, secret); err != nil {
+		if apierrors.IsNotFound(err) {
+			scope.Logger.Info("Waiting for vcluster secret to be available")
+			return ctrl.Result{RequeueAfter: time.Second * 5}, err
+		}
+		scope.Logger.Error(err, "Failed quering vcluster secret")
+		return ctrl.Result{}, err
+	}
 
+	if err := scope.installProviders(ctx); err != nil {
+		scope.Logger.Error(err, "Failed creating provider resources")
+		return ctrl.Result{}, err
+	}
 	// Install any necessary crossplane providers
 	// TODO: Support dynamic provisioning. For now, we just install Kubernetes and Helm
 
@@ -174,4 +206,47 @@ func getValuesArgs(project *v1alpha1.Project) ValuesTemplateArgs {
 		Oidc:        project.Spec.OidcConfig,
 		Users:       project.Spec.Users,
 	}
+}
+
+func (scope *ProjectScope) installProviders(ctx context.Context) error {
+
+	for _, provider := range []schema.GroupVersionResource{
+		{Group: "helm.crossplane.io", Version: "v1beta1", Resource: "providerconfigs"},
+		{Group: "kubernetes.crossplane.io", Version: "v1alpha1", Resource: "providerconfigs"},
+	} {
+		scope.Logger.Info("Creating provider " + provider.Group + "/" + provider.Version)
+		providerConfig := &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": provider.Group + "/" + provider.Version,
+				"kind":       "ProviderConfig",
+				"metadata": map[string]interface{}{
+					"name": scope.Project.Spec.Slug,
+				},
+				"spec": map[string]interface{}{
+					"credentials": map[string]interface{}{
+						"source": "Secret",
+						"secretRef": map[string]interface{}{
+							"namespace": scope.Project.Spec.Slug,
+							"name":      "vc-" + scope.Project.Spec.Slug,
+							"key":       "config",
+						},
+					},
+				},
+			},
+		}
+		fmt.Println(providerConfig)
+		_, err := scope.DynamicClient.Resource(provider).Get(ctx, scope.Project.Spec.Slug, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				_, err := scope.DynamicClient.Resource(provider).Create(ctx, providerConfig, metav1.CreateOptions{})
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
