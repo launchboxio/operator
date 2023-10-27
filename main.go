@@ -34,6 +34,7 @@ import (
 
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/controllers"
+
 	//+kubebuilder:scaffold:imports
 
 	// ClusterAPI resources
@@ -107,6 +108,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Project")
+		os.Exit(1)
+	}
+	if err = (&controllers.ConfigReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Config")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

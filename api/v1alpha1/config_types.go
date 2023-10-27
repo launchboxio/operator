@@ -23,73 +23,49 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// ProjectSpec defines the desired state of Project
-type ProjectSpec struct {
+// ConfigSpec defines the desired state of Config
+type ConfigSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Project. Edit project_types.go to remove/update
-	Slug string `json:"slug"`
-	Id   string `json:"id"`
-
-	KubernetesVersion string `json:"kubernetesVersion"`
-
-	Resources Resources `json:"resources,omitempty"`
-
+	// Foo is an example field of Config. Edit config_types.go to remove/update
 	OidcConfig *OidcConfig `json:"oidcConfig,omitempty"`
 
 	IngressHost string `json:"ingressHost,omitempty"`
-
-	Users []ProjectUser `json:"users,omitempty"`
-
-	Crossplane ProjectCrossplaneSpec `json:"crossplane,omitempty"`
 }
 
-type ProjectCrossplaneSpec struct {
-	Providers []string `json:"providers"`
-}
-
-type AddonSubscription struct {
-}
-
-type Resources struct {
-	Cpu    int32 `json:"cpu,omitempty"`
-	Memory int32 `json:"memory,omitempty"`
-	Disk   int32 `json:"disk,omitempty"`
-}
-
-type ProjectUser struct {
-	Email       string `json:"email"`
-	ClusterRole string `json:"clusterRole"`
-}
-
-// ProjectStatus defines the observed state of Project
-type ProjectStatus struct {
+// ConfigStatus defines the observed state of Config
+type ConfigStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+}
+
+type OidcConfig struct {
+	IssuerUrl string `json:"issuerUrl"`
+	ClientId  string `json:"clientId"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// Project is the Schema for the projects API
-type Project struct {
+// Config is the Schema for the configs API
+type Config struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ProjectSpec   `json:"spec,omitempty"`
-	Status ProjectStatus `json:"status,omitempty"`
+	Spec   ConfigSpec   `json:"spec,omitempty"`
+	Status ConfigStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// ProjectList contains a list of Project
-type ProjectList struct {
+// ConfigList contains a list of Config
+type ConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Project `json:"items"`
+	Items           []Config `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Project{}, &ProjectList{})
+	SchemeBuilder.Register(&Config{}, &ConfigList{})
 }
