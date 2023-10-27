@@ -131,68 +131,14 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
+	// Install any necessary crossplane providers
+	// TODO: Support dynamic provisioning. For now, we just install Kubernetes and Helm
 	if err := scope.installProviders(ctx); err != nil {
 		scope.Logger.Error(err, "Failed creating provider resources")
 		return ctrl.Result{}, err
 	}
-	// Install any necessary crossplane providers
-	// TODO: Support dynamic provisioning. For now, we just install Kubernetes and Helm
 
-	//credentials := xpv1.CommonCredentialSelectors{
-	//	SecretRef: &xpv1.SecretKeySelector{
-	//		SecretReference: xpv1.SecretReference{
-	//			Name:      "vc-" + identifier,
-	//			Namespace: identifier,
-	//		},
-	//		Key: "config",
-	//	},
-	//}
-	//
-	//k8sProviderConfig := &crossplanek8s.ProviderConfig{}
-	//if err := scope.Client.Get(ctx, types.NamespacedName{
-	//	Name:      identifier,
-	//	Namespace: identifier,
-	//}, k8sProviderConfig); err != nil {
-	//	if apierrors.IsNotFound(err) {
-	//		err = scope.Client.Create(ctx, &crossplanek8s.ProviderConfig{
-	//			ObjectMeta: metav1.ObjectMeta{
-	//				Name: identifier,
-	//			},
-	//			Spec: crossplanek8s.ProviderConfigSpec{
-	//				Credentials: crossplanek8s.ProviderCredentials{
-	//					Source:                    "Secret",
-	//					CommonCredentialSelectors: credentials,
-	//				},
-	//			},
-	//		})
-	//	}
-	//	return ctrl.Result{}, err
-	//}
-	//
-	//helmProviderConfig := &crossplanehelm.ProviderConfig{}
-	//if err := scope.Client.Get(ctx, types.NamespacedName{
-	//	Name:      identifier,
-	//	Namespace: identifier,
-	//}, helmProviderConfig); err != nil {
-	//	if apierrors.IsNotFound(err) {
-	//		err = scope.Client.Create(ctx, &crossplanehelm.ProviderConfig{
-	//			ObjectMeta: metav1.ObjectMeta{
-	//				Name: identifier,
-	//			},
-	//			Spec: crossplanehelm.ProviderConfigSpec{
-	//				Credentials: crossplanehelm.ProviderCredentials{
-	//					Source:                    "Secret",
-	//					CommonCredentialSelectors: credentials,
-	//				},
-	//			},
-	//		})
-	//		return ctrl.Result{Requeue: true}, err
-	//	}
-	//	return ctrl.Result{}, err
-	//}
-
-	// Lastly, install any subscribed addons
-
+	// TODO: Install any subscribed addons
 	return ctrl.Result{}, nil
 }
 
