@@ -11,10 +11,38 @@ on:
 jobs:
   helm:
     name: Test Helm Chart
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: azure/setup-helm@v3
         with:
           version: v3.10.3
       - run: helm lint --strict deploy/charts/operator
+
+  lint:
+    name: Lint Operator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - run: go get .
+      - run: |
+          formatted_count=$(gofmt -s -l . | wc -l)
+          if [ "${formatted_count}" -ne 0 ] ; then
+            echo "Run 'go fmt github.com/launchboxio/operator...'"
+            exit 1
+          fi
+
+  test:
+    name: Test Operator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - run: go get .
+      - run: go build -v ./...
+      - run: go test -v ./... -cover
