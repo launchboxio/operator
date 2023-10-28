@@ -25,12 +25,8 @@ import (
 
 // ProjectSpec defines the desired state of Project
 type ProjectSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of Project. Edit project_types.go to remove/update
 	Slug string `json:"slug"`
-	Id   string `json:"id"`
+	Id   int    `json:"id"`
 
 	Paused bool `json:"paused,omitempty"`
 
@@ -62,8 +58,8 @@ type ProjectUser struct {
 
 // ProjectStatus defines the observed state of Project
 type ProjectStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Status string            `json:"status,omitempty"`
+	Addons map[string]string `json:"addons,omitempty"`
 }
 
 //+kubebuilder:object:root=true
