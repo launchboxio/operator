@@ -6,7 +6,7 @@ import (
 )
 
 type ValuesTemplateArgs struct {
-	ProjectId   string
+	ProjectId   int
 	ProjectSlug string
 	Cpu         int32
 	Memory      int32
