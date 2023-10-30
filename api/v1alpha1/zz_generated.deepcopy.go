@@ -232,11 +232,6 @@ func (in *ProjectList) DeepCopyObject() runtime.Object {
 func (in *ProjectSpec) DeepCopyInto(out *ProjectSpec) {
 	*out = *in
 	out.Resources = in.Resources
-	if in.OidcConfig != nil {
-		in, out := &in.OidcConfig, &out.OidcConfig
-		*out = new(OidcConfig)
-		**out = **in
-	}
 	if in.Users != nil {
 		in, out := &in.Users, &out.Users
 		*out = make([]ProjectUser, len(*in))
