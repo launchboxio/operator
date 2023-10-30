@@ -50,7 +50,6 @@ sync:
 syncer:
   extraArgs:
     - --tls-san="{{ .ProjectSlug }}.{{ .ProjectSlug }}"
-    - --tls-san="api.{{ .ProjectSlug }}.{{ .Ingress.Domain }}"
     - --out-kube-config-server=https://{{ .ProjectSlug }}.{{ .ProjectSlug }}
 ingress:
   enabled: true
