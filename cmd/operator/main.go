@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/gorilla/websocket"
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/controllers"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
@@ -65,9 +66,12 @@ var (
 				os.Exit(1)
 			}
 
+			var conn *websocket.Conn
+			// If configuration is provided, initialize a subscribed stream
 			if err = (&controllers.ProjectReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
+				Stream: conn,
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Project")
 				os.Exit(1)

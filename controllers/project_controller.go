@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/gorilla/websocket"
 	"github.com/launchboxio/operator/internal/scope"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
@@ -41,6 +42,7 @@ import (
 type ProjectReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Stream *websocket.Conn
 }
 
 //+kubebuilder:rbac:groups=core.launchboxhq.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
