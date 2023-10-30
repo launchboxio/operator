@@ -53,3 +53,10 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+agent:
+  enabled: true
+  streamUrl: "wss://launchboxhq.io/cable"
+  tokenUrl: "https://launchboxhq.io/oauth/token"
+  clientId: ""
+  clientSecret: ""
