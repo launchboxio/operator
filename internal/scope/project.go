@@ -136,6 +136,14 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
+	// Update the CaCertificate of our project
+	if scope.Project.Status.CaCertificate != string(secret.Data["certificate-authority"]) {
+		scope.Logger.Info("Storing CA certificate for project")
+		scope.Project.Status.CaCertificate = string(secret.Data["certificate-authority"])
+		err := scope.Client.Status().Update(context.TODO(), scope.Project)
+		return ctrl.Result{}, err
+	}
+
 	// Install any necessary crossplane providers
 	// TODO: Support dynamic provisioning. For now, we just install Kubernetes and Helm
 	if err := scope.installProviders(ctx); err != nil {

@@ -90,6 +90,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              caCertificate:
+                type: string
               status:
                 type: string
             type: object

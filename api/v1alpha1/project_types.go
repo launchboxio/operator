@@ -57,8 +57,9 @@ type ProjectUser struct {
 
 // ProjectStatus defines the observed state of Project
 type ProjectStatus struct {
-	Status string            `json:"status,omitempty"`
-	Addons map[string]string `json:"addons,omitempty"`
+	Status        string            `json:"status,omitempty"`
+	CaCertificate string            `json:"caCertificate,omitempty"`
+	Addons        map[string]string `json:"addons,omitempty"`
 }
 
 //+kubebuilder:object:root=true
