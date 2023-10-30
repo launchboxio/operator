@@ -12,21 +12,14 @@ jobs:
   publish:
     name: Push Chart
     runs-on: ubuntu-22.04
+    env:
+      GCR_IMAGE: ghcr.io/${{ github.repository_owner }}/operator
     steps:
       - name: Checkout the code
         uses: actions/checkout@v2
       - uses: azure/setup-helm@v3
         with:
           version: v3.10.3
-      - uses: appany/helm-oci-chart-releaser@v0.3.0
-        with:
-          name: operator-chart
-          repository: launchboxhqio/operator
-          tag: 0.0.1
-          path: deploy/charts/operator # Default charts/{name}
-          registry: ghcr.io
-          registry_username: ${{ github.actor }}
-          registry_password: ${{ secrets.GITHUB_TOKEN }}
-          update_dependencies: 'true' # Defaults to false
-
-
+      - run: echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ${{ env.GCR_IMAGE }} --username ${{ github.repository_owner }} --password-stdin
+      - run: helm chart save ${{ github.workspace }}/deploy/charts/operator ${{ env.GCR_IMAGE }}:${{ github.sha }}
+      - run: helm chart push ${{ env.GCR_IMAGE }}-chart:${{ github.sha }}
