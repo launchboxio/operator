@@ -39,6 +39,10 @@ spec:
               value: {{ .Values.oidc.clientId }}
             - name: OIDC_ISSUER_URL
               value: {{ .Values.oidc.issuerUrl }}
+            - name: INGRESS_CLASS_NAME
+              value: {{ .Values.operator.ingressClassName }}
+            - name: DOMAIN
+              value: {{ .Values.operator.domain }}
           ports:
             - name: http
               containerPort: 8081

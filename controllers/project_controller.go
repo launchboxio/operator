@@ -83,14 +83,18 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	oidcClientId := os.Getenv("OIDC_CLIENT_ID")
 	oidcIssuerUrl := os.Getenv("OIDC_ISSUER_URL")
+	ingressClassName := os.Getenv("INGRESS_CLASS_NAME")
+	domain := os.Getenv("DOMAIN")
 
 	projectScope := scope.ProjectScope{
-		Project:       project,
-		Logger:        projectLogger,
-		Client:        r.Client,
-		DynamicClient: dynClient,
-		OidcClientId:  oidcClientId,
-		OidcIssuerUrl: oidcIssuerUrl,
+		Project:          project,
+		Logger:           projectLogger,
+		Client:           r.Client,
+		DynamicClient:    dynClient,
+		OidcClientId:     oidcClientId,
+		OidcIssuerUrl:    oidcIssuerUrl,
+		IngressClassName: ingressClassName,
+		Domain:           domain,
 	}
 	return projectScope.Reconcile(ctx, req)
 }

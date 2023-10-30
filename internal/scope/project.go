@@ -22,12 +22,14 @@ import (
 )
 
 type ProjectScope struct {
-	Project       *v1alpha1.Project
-	Logger        logr.Logger
-	Client        client.Client
-	DynamicClient *dynamic.DynamicClient
-	OidcClientId  string
-	OidcIssuerUrl string
+	Project          *v1alpha1.Project
+	Logger           logr.Logger
+	Client           client.Client
+	DynamicClient    *dynamic.DynamicClient
+	OidcClientId     string
+	OidcIssuerUrl    string
+	IngressClassName string
+	Domain           string
 }
 
 func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
@@ -197,6 +199,10 @@ func getValuesArgs(scope *ProjectScope) ValuesTemplateArgs {
 			ClientId  string
 			IssuerUrl string
 		}{ClientId: scope.OidcClientId, IssuerUrl: scope.OidcIssuerUrl},
+		Ingress: struct {
+			ClassName string
+			Domain    string
+		}{ClassName: scope.IngressClassName, Domain: scope.Domain},
 	}
 	return args
 }

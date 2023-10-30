@@ -15,6 +15,10 @@ type ValuesTemplateArgs struct {
 		ClientId  string
 		IssuerUrl string
 	}
+	Ingress struct {
+		ClassName string
+		Domain    string
+	}
 	Users []v1alpha1.ProjectUser
 }
 
@@ -46,15 +50,16 @@ sync:
 syncer:
   extraArgs:
     - --tls-san="{{ .ProjectSlug }}.{{ .ProjectSlug }}"
+    - --tls-san="api.{{ .ProjectSlug }}.{{ .Ingress.Domain }}"
     - --out-kube-config-server=https://{{ .ProjectSlug }}.{{ .ProjectSlug }}
 ingress:
   enabled: true
-  ingressClassName: "nginx"
+  ingressClassName: "{{ .Ingress.ClassName }}"
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
     nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-  host: "api.{{ .ProjectSlug }}.launchboxhq.dev"
+  host: "api.{{ .ProjectSlug }}.{{ .Ingress.Domain }}"
 
 init:
   manifests: |

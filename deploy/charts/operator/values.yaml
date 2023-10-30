@@ -58,6 +58,9 @@ oidc:
   clientId: "_CxhiJICJtLqbmx_tJmgdvIXA1fYV3kE1A72EdFyuJY"
   issuerUrl: "https://launchboxhq.dev"
 
+operator:
+  ingressClassName: nginx
+  domain: https://launchboxhq.io
 agent:
   enabled: true
   streamUrl: "wss://launchboxhq.io/cable"
