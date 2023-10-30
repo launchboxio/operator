@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/websocket"
-	"log"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
 )
@@ -19,15 +18,29 @@ type Handler struct {
 }
 
 func NewHandler(conn *websocket.Conn, logger logr.Logger, client client.Client) *Handler {
-	return &Handler{
+	handler := &Handler{
 		Logger: logger,
 		Client: client,
 		conn:   conn,
 	}
+	handler.registerSubscriptions()
+	return handler
 }
 
 func (h *Handler) registerSubscriptions() {
-	router := &EventRouter{}
+	router := NewRouter()
+	router.Subscribe(PingEvent, func(event *ActionCableEvent) error {
+		return nil
+	})
+	router.Subscribe("welcome", func(event *ActionCableEvent) error {
+		return nil
+	})
+	router.Subscribe("confirm_subscription", func(event *ActionCableEvent) error {
+		return nil
+	})
+	router.Subscribe("test", func(event *ActionCableEvent) error {
+		return nil
+	})
 
 	projectHandler := h.projectHandler()
 	router.Subscribe(ProjectCreatedEvent, projectHandler.Create)
@@ -35,6 +48,11 @@ func (h *Handler) registerSubscriptions() {
 	router.Subscribe(ProjectPausedEvent, projectHandler.Pause)
 	router.Subscribe(ProjectResumedEvent, projectHandler.Resume)
 	router.Subscribe(ProjectDeletedEvent, projectHandler.Delete)
+
+	addonHandler := h.addonHandler()
+	router.Subscribe(AddonCreatedEvent, addonHandler.Create)
+	router.Subscribe(AddonUpdatedEvent, addonHandler.Update)
+	router.Subscribe(AddonDeletedEvent, addonHandler.Delete)
 
 	h.router = router
 }
@@ -47,22 +65,27 @@ func (h *Handler) Listen(ctx context.Context) error {
 	// Start our listener, which receives, processes, and routes events
 	go func() {
 		defer close(done)
-		err := h.listener()
-		if err != nil {
-			h.Logger.Error(err, "Failed listening to socket messages")
-		}
+		h.Logger.Info("Starting listener")
+		h.listener()
 	}()
+
+	if err := h.subscribe(); err != nil {
+		h.Logger.Error(err, "Failed to subscribe to cluster channel")
+		return err
+	}
 
 	for {
 		select {
 		case <-done:
+			h.Logger.Info("Done received")
 			return nil
 		case msg := <-h.send:
+			h.Logger.Info(string(msg))
 			if err := h.sendMessage(msg); err != nil {
 				h.Logger.Error(err, "Failed sending message")
 			}
 		case <-ctx.Done():
-			log.Println("interrupt")
+			h.Logger.Info("interrupt")
 
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
@@ -86,24 +109,26 @@ func (h *Handler) sendMessage(message []byte) error {
 
 // listener receives messages on the socket stream,
 // and queues them for processing
-func (h *Handler) listener() error {
+func (h *Handler) listener() {
 	for {
 		_, message, err := h.conn.ReadMessage()
 		if err != nil {
-			return err
+			h.Logger.Error(err, "Failed reading message")
+			continue
 		}
 		event, err := h.parse(message)
 		if err != nil {
-			return err
+			h.Logger.Error(err, "Failed parsing message")
+			continue
 		}
 		if err := h.processEvent(event); err != nil {
-			return err
+			h.Logger.Error(err, "Failed processing event")
 		}
 	}
 }
 
-func (h *Handler) processEvent(event Event) error {
-	if err := h.ackMessage(event.Id); err != nil {
+func (h *Handler) processEvent(event *ActionCableEvent) error {
+	if err := h.ackMessage(event.Message.Id); err != nil {
 		return err
 	}
 	if err := h.router.Dispatch(event); err != nil {
@@ -113,10 +138,28 @@ func (h *Handler) processEvent(event Event) error {
 	return nil
 }
 
-func (h *Handler) parse(message []byte) (Event, error) {
-	event := Event{}
-	err := json.Unmarshal(message, &event)
-	return event, err
+func (h *Handler) parse(message []byte) (*ActionCableEvent, error) {
+	actionCableEvent := &ActionCableEvent{}
+	var rawMessage map[string]interface{}
+	if err := json.Unmarshal(message, &rawMessage); err != nil {
+		return nil, err
+	}
+	messageType, ok := rawMessage["type"]
+	if ok {
+		if messageType == "ping" || messageType == "confirm_subscription" {
+			return &ActionCableEvent{
+				Message: ActionCableEventMessage{
+					Type: messageType.(string),
+				},
+			}, nil
+		}
+	}
+
+	if err := actionCableEvent.Unmarshal(message); err != nil {
+		return nil, err
+	}
+
+	return actionCableEvent, nil
 }
 
 func (h *Handler) ackMessage(eventId string) error {
@@ -128,8 +171,41 @@ func (h *Handler) ackMessage(eventId string) error {
 	return h.sendMessage(ackBytes)
 }
 
+func (h *Handler) subscribe() error {
+	identifier := &struct {
+		Channel   string `json:"channel"`
+		ClusterId int    `json:"cluster_id"`
+	}{
+		Channel:   "ClusterChannel",
+		ClusterId: 3,
+	}
+	identBytes, err := json.Marshal(identifier)
+	if err != nil {
+		return err
+	}
+	subscription := &struct {
+		Command    string `json:"command"`
+		Identifier string `json:"identifier"`
+	}{
+		Command:    "subscribe",
+		Identifier: string(identBytes),
+	}
+	sub, err := json.Marshal(subscription)
+	if err != nil {
+		return err
+	}
+	return h.sendMessage(sub)
+}
+
 func (h *Handler) projectHandler() *ProjectHandler {
 	return &ProjectHandler{
+		Logger: h.Logger,
+		Client: h.Client,
+	}
+}
+
+func (h *Handler) addonHandler() *AddonHandler {
+	return &AddonHandler{
 		Logger: h.Logger,
 		Client: h.Client,
 	}

@@ -1,9 +1,38 @@
 package events
 
-type Event struct {
-	Id      string      `json:"id"`
-	Type    string      `json:"type"`
-	Payload interface{} `json:"payload,omitempty"`
+import (
+	"encoding/json"
+)
+
+type ActionCableEvent struct {
+	//RawIdentifier string `json:"identifier"`
+	//Identifier    ActionCableEventIdentifier
+	Message ActionCableEventMessage `json:"message"`
+}
+
+type ActionCableEventMessage struct {
+	Type    string          `json:"type"`
+	Id      string          `json:"id"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+func (acem *ActionCableEventMessage) GetPayload() (map[string]interface{}, error) {
+	result := map[string]interface{}{}
+	err := json.Unmarshal(acem.Payload, &result)
+	return result, err
+}
+
+type ActionCableEventIdentifier struct {
+	Channel   string `json:"channel"`
+	ClusterId int    `json:"cluster_id"`
+}
+
+func (ace *ActionCableEvent) Unmarshal(data []byte) error {
+	if err := json.Unmarshal(data, ace); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type AckResponse struct {
@@ -16,6 +45,10 @@ const (
 	ProjectResumedEvent        = "projects.resumed"
 	ProjectUpdatedEvent        = "projects.updated"
 	ProjectDeletedEvent        = "projects.deleted"
+	AddonCreatedEvent          = "addons.created"
+	AddonUpdatedEvent          = "addons.update"
+	AddonDeletedEvent          = "addons.delete"
+	PingEvent                  = "ping"
 )
 
-type EventHandler = func(event Event) error
+type EventHandler = func(event *ActionCableEvent) error
