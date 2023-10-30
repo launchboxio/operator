@@ -192,7 +192,6 @@ func getValuesArgs(project *v1alpha1.Project) ValuesTemplateArgs {
 		Oidc:        project.Spec.OidcConfig,
 		Users:       project.Spec.Users,
 	}
-	fmt.Println(args)
 	return args
 }
 
@@ -222,7 +221,6 @@ func (scope *ProjectScope) installProviders(ctx context.Context) error {
 				},
 			},
 		}
-		fmt.Println(providerConfig)
 		_, err := scope.DynamicClient.Resource(provider).Get(ctx, scope.Project.Spec.Slug, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {

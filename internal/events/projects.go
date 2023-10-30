@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/launchboxio/operator/api/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -124,8 +123,5 @@ func projectFromPayload(data map[string]interface{}) *v1alpha1.Project {
 			},
 		},
 	}
-
-	fmt.Println(project)
-
 	return project
 }
