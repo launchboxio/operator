@@ -6,12 +6,15 @@ import (
 	"github.com/launchboxio/operator/internal/events"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2/clientcredentials"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"net/http"
 	"net/url"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 )
 
 var agentCmd = &cobra.Command{
@@ -52,7 +55,8 @@ var agentCmd = &cobra.Command{
 		defer c.Close()
 
 		kubeClient, err := client.New(config.GetConfigOrDie(), client.Options{})
-		kubeClient.Scheme()
+		utilruntime.Must(corev1alpha1.AddToScheme(kubeClient.Scheme()))
+
 		eventHandler := events.NewHandler(c, zap.New(), kubeClient)
 		//go func() {
 		logger.Info("Starting event handler")

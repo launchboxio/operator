@@ -183,7 +183,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 }
 
 func getValuesArgs(project *v1alpha1.Project) ValuesTemplateArgs {
-	return ValuesTemplateArgs{
+	args := ValuesTemplateArgs{
 		ProjectId:   project.Spec.Id,
 		ProjectSlug: project.Spec.Slug,
 		Cpu:         project.Spec.Resources.Cpu,
@@ -192,6 +192,8 @@ func getValuesArgs(project *v1alpha1.Project) ValuesTemplateArgs {
 		Oidc:        project.Spec.OidcConfig,
 		Users:       project.Spec.Users,
 	}
+	fmt.Println(args)
+	return args
 }
 
 func (scope *ProjectScope) installProviders(ctx context.Context) error {

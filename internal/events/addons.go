@@ -79,7 +79,7 @@ func addonFromPayload(event map[string]interface{}) *crossplanepkgv1.Configurati
 			Name: event["name"].(string),
 		},
 		Spec: crossplanepkgv1.ConfigurationSpec{
-			crossplanepkgv1.PackageSpec{
+			PackageSpec: crossplanepkgv1.PackageSpec{
 				Package:                  event["oci_registry"].(string) + ":" + event["oci_version"].(string),
 				PackagePullPolicy:        &pullPolicy,
 				RevisionActivationPolicy: &activationPolicy,
