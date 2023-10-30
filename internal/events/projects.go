@@ -103,6 +103,13 @@ func (ph *ProjectHandler) Resume(event *ActionCableEvent) error {
 }
 
 func projectFromPayload(data map[string]interface{}) *v1alpha1.Project {
+	var users []v1alpha1.ProjectUser
+	for _, user := range data["users"].([]map[string]interface{}) {
+		users = append(users, v1alpha1.ProjectUser{
+			Email:       user["email"].(string),
+			ClusterRole: user["clusterRole"].(string),
+		})
+	}
 	project := &v1alpha1.Project{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      data["slug"].(string),
@@ -121,6 +128,7 @@ func projectFromPayload(data map[string]interface{}) *v1alpha1.Project {
 				Memory: int32(data["memory"].(float64)),
 				Disk:   int32(data["disk"].(float64)),
 			},
+			Users: users,
 		},
 	}
 	return project
