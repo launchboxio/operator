@@ -17,7 +17,7 @@ jobs:
           version: v3.10.3
       - uses: appany/helm-oci-chart-releaser@v0.3.0
         with:
-          name: operator
+          name: operator-chart
           repository: launchboxhqio/operator
           tag: ${{github.ref_name}}
           path: deploy/charts/operator # Default charts/{name}
