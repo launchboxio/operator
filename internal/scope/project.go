@@ -26,6 +26,8 @@ type ProjectScope struct {
 	Logger        logr.Logger
 	Client        client.Client
 	DynamicClient *dynamic.DynamicClient
+	OidcClientId  string
+	OidcIssuerUrl string
 }
 
 func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
@@ -55,7 +57,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	var values bytes.Buffer
-	if err := ValuesTemplate.Execute(&values, getValuesArgs(scope.Project)); err != nil {
+	if err := ValuesTemplate.Execute(&values, getValuesArgs(scope)); err != nil {
 		scope.Logger.Error(err, "Failed generating vcluster values")
 		return ctrl.Result{}, err
 	}
@@ -182,15 +184,19 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
-func getValuesArgs(project *v1alpha1.Project) ValuesTemplateArgs {
+func getValuesArgs(scope *ProjectScope) ValuesTemplateArgs {
+	project := scope.Project
 	args := ValuesTemplateArgs{
 		ProjectId:   project.Spec.Id,
 		ProjectSlug: project.Spec.Slug,
 		Cpu:         project.Spec.Resources.Cpu,
 		Memory:      project.Spec.Resources.Memory,
 		Disk:        project.Spec.Resources.Disk,
-		Oidc:        project.Spec.OidcConfig,
 		Users:       project.Spec.Users,
+		Oidc: struct {
+			ClientId  string
+			IssuerUrl string
+		}{ClientId: scope.OidcClientId, IssuerUrl: scope.OidcIssuerUrl},
 	}
 	return args
 }

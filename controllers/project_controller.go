@@ -81,11 +81,16 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	oidcClientId := os.Getenv("OIDC_CLIENT_ID")
+	oidcIssuerUrl := os.Getenv("OIDC_ISSUER_URL")
+
 	projectScope := scope.ProjectScope{
 		Project:       project,
 		Logger:        projectLogger,
 		Client:        r.Client,
 		DynamicClient: dynClient,
+		OidcClientId:  oidcClientId,
+		OidcIssuerUrl: oidcIssuerUrl,
 	}
 	return projectScope.Reconcile(ctx, req)
 }

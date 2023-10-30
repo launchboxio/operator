@@ -11,8 +11,11 @@ type ValuesTemplateArgs struct {
 	Cpu         int32
 	Memory      int32
 	Disk        int32
-	Oidc        *v1alpha1.OidcConfig
-	Users       []v1alpha1.ProjectUser
+	Oidc        struct {
+		ClientId  string
+		IssuerUrl string
+	}
+	Users []v1alpha1.ProjectUser
 }
 
 var ValuesTemplate = template.Must(template.New("values").Parse(`

@@ -32,7 +32,6 @@ type ProjectSpec struct {
 
 	KubernetesVersion string                `json:"kubernetesVersion"`
 	Resources         Resources             `json:"resources,omitempty"`
-	OidcConfig        *OidcConfig           `json:"oidcConfig,omitempty"`
 	IngressHost       string                `json:"ingressHost,omitempty"`
 	Users             []ProjectUser         `json:"users,omitempty"`
 	Crossplane        ProjectCrossplaneSpec `json:"crossplane,omitempty"`

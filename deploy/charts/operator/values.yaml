@@ -54,6 +54,10 @@ tolerations: []
 
 affinity: {}
 
+oidc:
+  clientId: "_CxhiJICJtLqbmx_tJmgdvIXA1fYV3kE1A72EdFyuJY"
+  issuerUrl: "https://launchboxhq.dev"
+
 agent:
   enabled: true
   streamUrl: "wss://launchboxhq.io/cable"
