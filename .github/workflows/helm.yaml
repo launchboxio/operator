@@ -1,25 +1,19 @@
 name: Helm
 
 on:
-  release:
-    types:
-      - created
   push:
     branches:
       - main
+    paths:
+      - deploy/charts/operator/Chart.yaml
 
 jobs:
-  publish:
-    name: Push Chart
-    runs-on: ubuntu-22.04
-    env:
-      GCR_IMAGE: ghcr.io/${{ github.repository_owner }}/operator
-    steps:
-      - name: Checkout the code
-        uses: actions/checkout@v2
-      - uses: azure/setup-helm@v3
-        with:
-          version: v3.10.3
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ${{ env.GCR_IMAGE }} --username ${{ github.repository_owner }} --password-stdin
-      - run: helm chart save ${{ github.workspace }}/deploy/charts/operator ${{ env.GCR_IMAGE }}:${{ github.sha }}
-      - run: helm chart push ${{ env.GCR_IMAGE }}-chart:${{ github.sha }}
+  call-update-helm-repo:
+    uses: launchboxio/helm-charts/.github/workflows/update-helm-repo.yaml@main
+    with:
+      charts_dir: deploy/charts
+      cr_configfile: deploy/charts/cr.yaml
+      ct_configfile: deploy/charts/ct.yaml
+      helm_tag_prefix: helm
+    secrets:
+      helm_repo_token: ${{ secrets.HELM_CHARTS_ACCESS_TOKEN }}

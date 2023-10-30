@@ -1,0 +1,9 @@
+---
+remote: origin
+target-branch: main
+chart-dirs:
+  - deploy/charts/operator
+chart-repos: []
+helm-extra-args: --timeout 600s
+check-version-increment: false
+validate-maintainers: false
