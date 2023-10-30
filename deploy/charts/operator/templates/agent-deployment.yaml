@@ -38,6 +38,8 @@ spec:
             - --client-id={{ .Values.agent.clientId }}
             - --client-secret={{ .Values.agent.clientSecret }}
             - --token-url={{ .Values.agent.tokenUrl }}
+            - --channel={{ .Values.agent.channel }}
+            - --cluster-id={{ .Values.agent.clusterId }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

@@ -60,3 +60,5 @@ agent:
   tokenUrl: "https://launchboxhq.io/oauth/token"
   clientId: ""
   clientSecret: ""
+  clusterId:
+  channel: "ClusterChannel"

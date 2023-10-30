@@ -57,7 +57,7 @@ func (h *Handler) registerSubscriptions() {
 	h.router = router
 }
 
-func (h *Handler) Listen(ctx context.Context) error {
+func (h *Handler) Listen(ctx context.Context, channel string, clusterId int) error {
 
 	done := make(chan struct{})
 	h.send = make(chan []byte)
@@ -69,7 +69,7 @@ func (h *Handler) Listen(ctx context.Context) error {
 		h.listener()
 	}()
 
-	if err := h.subscribe(); err != nil {
+	if err := h.subscribe(channel, clusterId); err != nil {
 		h.Logger.Error(err, "Failed to subscribe to cluster channel")
 		return err
 	}
@@ -172,13 +172,13 @@ func (h *Handler) ackMessage(eventId string) error {
 	return h.sendMessage(ackBytes)
 }
 
-func (h *Handler) subscribe() error {
+func (h *Handler) subscribe(channel string, clusterId int) error {
 	identifier := &struct {
 		Channel   string `json:"channel"`
 		ClusterId int    `json:"cluster_id"`
 	}{
-		Channel:   "ClusterChannel",
-		ClusterId: 3,
+		Channel:   channel,
+		ClusterId: clusterId,
 	}
 	identBytes, err := json.Marshal(identifier)
 	if err != nil {
