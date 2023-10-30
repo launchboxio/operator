@@ -112,6 +112,7 @@ func (h *Handler) sendMessage(message []byte) error {
 func (h *Handler) listener() {
 	for {
 		_, message, err := h.conn.ReadMessage()
+		h.Logger.Info(string(message))
 		if err != nil {
 			h.Logger.Error(err, "Failed reading message")
 			continue
