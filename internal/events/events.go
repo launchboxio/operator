@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"github.com/launchboxio/operator/internal/stream"
 )
 
 type ActionCableEvent struct {
@@ -39,6 +40,33 @@ func (ace *ActionCableEvent) Unmarshal(data []byte) error {
 	}
 
 	return nil
+}
+
+type ProjectStatusEvent struct {
+	Status        string `json:"status"`
+	CaCertificate string `json:"ca_certificate,omitempty"`
+	Action        string `json:"action"`
+	ProjectId     int    `json:"project_id"`
+}
+
+func NewProjectStatusEvent(projectId int, status string, caCertificate []byte) *ProjectStatusEvent {
+	return &ProjectStatusEvent{
+		Action:        "project_status",
+		ProjectId:     projectId,
+		Status:        status,
+		CaCertificate: string(caCertificate),
+	}
+}
+
+func (pse ProjectStatusEvent) Marshal() ([]byte, error) {
+	data, err := json.Marshal(pse)
+	if err != nil {
+		return nil, err
+	}
+	return stream.BaseEvent{
+		Command: "message",
+		Data:    string(data),
+	}.Marshal()
 }
 
 type AckResponse struct {

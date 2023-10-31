@@ -3,9 +3,11 @@ package scope
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/launchboxio/operator/api/v1alpha1"
+	"github.com/launchboxio/operator/internal/events"
 	"github.com/launchboxio/operator/internal/stream"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -96,6 +98,14 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
+	if values.String() != infrastructure.Spec.HelmRelease.Values {
+		scope.Logger.Info("Updating helm values")
+		_ = scope.TransmitStatus("provisioning")
+		infrastructure.Spec.HelmRelease.Values = values.String()
+		err := scope.Client.Update(ctx, infrastructure)
+		return ctrl.Result{}, err
+	}
+
 	cluster := &clusterv1.Cluster{}
 	if err := scope.Client.Get(ctx, types.NamespacedName{
 		Name:      identifier,
@@ -143,8 +153,10 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		scope.Logger.Info("Storing CA certificate for project")
 		scope.Project.Status.CaCertificate = string(secret.Data["certificate-authority"])
 		err := scope.Client.Status().Update(context.TODO(), scope.Project)
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
+
+	_ = scope.TransmitStatus("provisioned")
 
 	// Install any necessary crossplane providers
 	// TODO: Support dynamic provisioning. For now, we just install Kubernetes and Helm
@@ -172,6 +184,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	if *statefulSet.Spec.Replicas != desiredReplicas {
+		_ = scope.TransmitStatus("provisioning")
 		scope.Logger.Info(fmt.Sprintf("Updating statefulset to %d replicas", desiredReplicas))
 		statefulSet.Spec.Replicas = &desiredReplicas
 		if err := scope.Client.Update(ctx, statefulSet); err != nil {
@@ -184,6 +197,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 	// If paused, we also need to terminate all the running pods
 	if scope.Project.Spec.Paused == true {
 		pod := &v1.Pod{}
+		_ = scope.TransmitStatus("pausing")
 		if err := scope.Client.DeleteAllOf(ctx, pod, []client.DeleteAllOfOption{
 			client.InNamespace(identifier),
 			client.MatchingLabels{"vcluster.loft.sh/managed-by": identifier},
@@ -192,6 +206,9 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 			scope.Logger.Error(err, "Failed to delete running pods")
 			return ctrl.Result{}, err
 		}
+		_ = scope.TransmitStatus("paused")
+	} else {
+		_ = scope.TransmitStatus("provisioned")
 	}
 
 	return ctrl.Result{}, nil
@@ -258,4 +275,23 @@ func (scope *ProjectScope) installProviders(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *ProjectScope) TransmitStatus(status string) error {
+	if s.Stream == nil {
+		return nil
+	}
+	projectStatusEvent := events.NewProjectStatusEvent(
+		s.Project.Spec.Id,
+		status,
+		[]byte(s.Project.Status.CaCertificate),
+	)
+	event, err := json.Marshal(projectStatusEvent)
+	if err != nil {
+		return err
+	}
+	return s.Stream.Notify(stream.BaseEvent{
+		Command: "message",
+		Data:    string(event),
+	})
 }

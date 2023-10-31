@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/websocket"
@@ -23,11 +24,12 @@ type Stream struct {
 	UseBacklog bool
 
 	// Websocket connection resources
-	conn        *websocket.Conn
-	send        chan []byte
-	recv        chan []byte
-	isConnected bool
-
+	conn         *websocket.Conn
+	send         chan []byte
+	recv         chan []byte
+	subscription *Subscription
+	isConnected  bool
+	identBytes   []byte
 	// When disconnected, store a backlog of events
 	// that we can later propagate on reconnection
 	backlog [][]byte
@@ -43,7 +45,7 @@ func New(url string, auth clientcredentials.Config, channel string, clusterId in
 		Auth:       auth,
 		Channel:    channel,
 		ClusterId:  clusterId,
-		UseBacklog: false,
+		UseBacklog: true,
 	}
 }
 
@@ -67,6 +69,8 @@ func (s *Stream) Listen(ctx context.Context) error {
 	done := make(chan struct{})
 	s.send = make(chan []byte)
 
+	// TODO: Handle the following disconnect messages
+	// {"type":"disconnect","reason":"server_restart","reconnect":true}
 	defer c.Close()
 
 	// Start our listener
@@ -94,6 +98,13 @@ func (s *Stream) Listen(ctx context.Context) error {
 	s.isConnected = true
 
 	// TODO: Process the backlog and clear it
+	fmt.Println(s.backlog)
+	for _, event := range s.backlog {
+		if err = s.Send(event); err != nil {
+			s.Logger.Error(err, "Failed sending backlogged event")
+		}
+	}
+	s.backlog = [][]byte{}
 
 	for {
 		select {
@@ -140,23 +151,30 @@ func (s *Stream) AddListener(listener Listener) {
 }
 
 func (s *Stream) subscribe() error {
-	subscriptionEvent := SubscriptionEvent{
-		ClusterId: s.ClusterId,
+	subscription := &Subscription{
 		Channel:   s.Channel,
+		ClusterId: s.ClusterId,
 	}
-	data, err := subscriptionEvent.Marshal()
+	identByte, err := json.Marshal(subscription)
 	if err != nil {
 		return err
 	}
+	s.identBytes = identByte
+	data, err := json.Marshal(BaseEvent{
+		Command:    "subscribe",
+		Identifier: string(identByte),
+	})
 	return s.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 // Notify is a helper for converting a base event object
 // into a message we can transmit to HQ
-func (s *Stream) Notify(event Event) error {
+func (s *Stream) Notify(event BaseEvent) error {
+	event.Identifier = string(s.identBytes)
 	data, err := event.Marshal()
 	if err != nil {
 		return err
 	}
+	fmt.Println("Sending " + string(data))
 	return s.Send(data)
 }

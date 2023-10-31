@@ -6,37 +6,31 @@ type Event interface {
 	Marshal() ([]byte, error)
 }
 
+type MessageEvent struct {
+}
+
 type BaseEvent struct {
-	Data interface{} `json:"data"`
+	Command    string `json:"command"`
+	Data       string `json:"data,omitempty"`
+	Identifier string `json:"identifier"`
 }
 
 func (be BaseEvent) Marshal() ([]byte, error) {
 	return json.Marshal(be)
 }
 
-type SubscriptionEvent struct {
-	Channel   string
-	ClusterId int
+type Builder struct {
+	Command string
+	Data    string
 }
 
-func (se SubscriptionEvent) Marshal() ([]byte, error) {
-	id := &struct {
-		Channel   string `json:"channel"`
-		ClusterId int    `json:"cluster_id"`
-	}{
-		Channel:   se.Channel,
-		ClusterId: se.ClusterId,
-	}
-	identBytes, err := json.Marshal(id)
-	if err != nil {
-		return nil, err
-	}
-	sub := &struct {
-		Command    string `json:"command"`
-		Identifier string `json:"identifier"`
-	}{
-		Command:    "subscribe",
-		Identifier: string(identBytes),
-	}
-	return json.Marshal(sub)
+func (b *Builder) SetCommand(command string) *Builder {
+	b.Command = command
+	return b
+}
+
+func (b *Builder) SetEvent(event Event) *Builder {
+	data, _ := event.Marshal()
+	b.Data = string(data)
+	return b
 }

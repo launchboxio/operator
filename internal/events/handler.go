@@ -11,10 +11,10 @@ type Handler struct {
 	Logger   logr.Logger
 	Client   client.Client
 	router   *EventRouter
-	SendFunc func(event stream.Event) error
+	SendFunc func(event stream.BaseEvent) error
 }
 
-type SendFunc func(event stream.Event) error
+type SendFunc func(event stream.BaseEvent) error
 
 func New(logger logr.Logger, client client.Client, sender SendFunc) *Handler {
 	handler := &Handler{
@@ -103,7 +103,8 @@ func (h *Handler) parse(message []byte) (*ActionCableEvent, error) {
 }
 
 func (h *Handler) ackMessage(eventId string) error {
-	return h.SendFunc(AckEvent{EventId: eventId})
+	//return h.SendFunc(AckEvent{EventId: eventId})
+	return nil
 }
 
 func (h *Handler) projectHandler() *ProjectHandler {
