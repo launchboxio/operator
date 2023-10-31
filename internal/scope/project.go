@@ -103,7 +103,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		_ = scope.TransmitStatus("provisioning")
 		infrastructure.Spec.HelmRelease.Values = values.String()
 		err := scope.Client.Update(ctx, infrastructure)
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	cluster := &clusterv1.Cluster{}
@@ -211,7 +211,9 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		_ = scope.TransmitStatus("provisioned")
 	}
 
-	return ctrl.Result{}, nil
+	// TODO: We shouldn't manually requeue. Instead, we should fix the generation
+	// observation to start execution on changes
+	return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
 }
 
 func getValuesArgs(scope *ProjectScope) ValuesTemplateArgs {
