@@ -5,8 +5,6 @@ import (
 )
 
 type ActionCableEvent struct {
-	//RawIdentifier string `json:"identifier"`
-	//Identifier    ActionCableEventIdentifier
 	Message ActionCableEventMessage `json:"message"`
 }
 
@@ -14,6 +12,14 @@ type ActionCableEventMessage struct {
 	Type    string          `json:"type"`
 	Id      string          `json:"id"`
 	Payload json.RawMessage `json:"payload"`
+}
+
+type AckEvent struct {
+	EventId string `json:"eventId"`
+}
+
+func (ack AckEvent) Marshal() ([]byte, error) {
+	return json.Marshal(ack)
 }
 
 func (acem *ActionCableEventMessage) GetPayload() (map[string]interface{}, error) {

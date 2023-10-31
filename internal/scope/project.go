@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/launchboxio/operator/api/v1alpha1"
+	"github.com/launchboxio/operator/internal/stream"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -30,6 +31,7 @@ type ProjectScope struct {
 	OidcIssuerUrl    string
 	IngressClassName string
 	Domain           string
+	Stream           *stream.Stream
 }
 
 func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
@@ -176,6 +178,7 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 			scope.Logger.Error(err, "Failed updating desired replicas")
 			return ctrl.Result{}, err
 		}
+
 	}
 
 	// If paused, we also need to terminate all the running pods
