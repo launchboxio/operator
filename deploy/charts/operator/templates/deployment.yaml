@@ -44,7 +44,7 @@ spec:
             - name: STREAM_URL
               value: {{ .Values.stream.url }}
             - name: CLUSTER_ID
-              value: {{ .Values.stream.clusterId }}
+              value: {{ .Values.stream.clusterId | quote }}
             - name: LAUNCHBOX_TOKEN_URL
               value: {{ .Values.stream.tokenUrl }}
             - name: LAUNCHBOX_CLIENT_ID
