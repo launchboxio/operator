@@ -67,12 +67,14 @@ func (s *Stream) Listen(ctx context.Context) error {
 	done := make(chan struct{})
 	s.send = make(chan []byte)
 
+	defer c.Close()
+
 	// Start our listener
 	go func() {
 		defer close(done)
+		fmt.Println("Starting listener loop")
 		for {
-			_, message, err := s.conn.ReadMessage()
-			fmt.Println(string(message))
+			_, message, err := c.ReadMessage()
 			if err != nil {
 				s.Logger.Error(err, "Failed reading message")
 				continue
@@ -99,8 +101,7 @@ func (s *Stream) Listen(ctx context.Context) error {
 			s.Logger.Info("Done received")
 			return nil
 		case msg := <-s.send:
-			fmt.Println(string(msg))
-			if err := s.Send(msg); err != nil {
+			if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
 				s.Logger.Error(err, "Failed sending message")
 			}
 		case <-ctx.Done():
@@ -139,13 +140,15 @@ func (s *Stream) AddListener(listener Listener) {
 }
 
 func (s *Stream) subscribe() error {
-	fmt.Println("Subscribing")
 	subscriptionEvent := SubscriptionEvent{
 		ClusterId: s.ClusterId,
 		Channel:   s.Channel,
 	}
-	fmt.Println(subscriptionEvent)
-	return s.Notify(subscriptionEvent)
+	data, err := subscriptionEvent.Marshal()
+	if err != nil {
+		return err
+	}
+	return s.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 // Notify is a helper for converting a base event object
