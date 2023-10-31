@@ -58,14 +58,15 @@ oidc:
   clientId: "_CxhiJICJtLqbmx_tJmgdvIXA1fYV3kE1A72EdFyuJY"
   issuerUrl: "https://launchboxhq.dev"
 
-operator:
-  ingressClassName: nginx
-  domain: https://launchboxhq.io
-agent:
+stream:
   enabled: true
-  streamUrl: "wss://launchboxhq.io/cable"
+  url: "wss://launchboxhq.io/cable"
   tokenUrl: "https://launchboxhq.io/oauth/token"
   clientId: ""
   clientSecret: ""
   clusterId:
   channel: "ClusterChannel"
+
+operator:
+  ingressClassName: nginx
+  domain: https://launchboxhq.io

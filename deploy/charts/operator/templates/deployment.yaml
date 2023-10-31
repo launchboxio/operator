@@ -4,13 +4,11 @@ metadata:
   name: {{ include "operator.fullname" . }}
   labels:
     {{- include "operator.labels" . | nindent 4 }}
-    launchboxhq.io/component: operator
 spec:
   replicas: 1
   selector:
     matchLabels:
       {{- include "operator.selectorLabels" . | nindent 6 }}
-      launchboxhq.io/component: operator
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -19,7 +17,6 @@ spec:
       {{- end }}
       labels:
         {{- include "operator.selectorLabels" . | nindent 8 }}
-        launchboxhq.io/component: operator
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -43,6 +40,20 @@ spec:
               value: {{ .Values.operator.ingressClassName }}
             - name: DOMAIN
               value: {{ .Values.operator.domain }}
+            {{- if .Values.stream.enabled }}
+            - name: STREAM_URL
+              value: {{ .Values.stream.url }}
+            - name: CLUSTER_ID
+              value: {{ .Values.stream.clusterId }}
+            - name: LAUNCHBOX_TOKEN_URL
+              value: {{ .Values.stream.tokenUrl }}
+            - name: LAUNCHBOX_CLIENT_ID
+              value: {{ .Values.stream.clientId }}
+            - name: LAUNCHBOX_CLIENT_SECRET
+              value: {{ .Values.stream.clientSecret }}
+            - name: CHANNEL
+              value: {{ .Values.stream.channel }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 8081

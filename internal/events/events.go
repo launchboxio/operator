@@ -2,11 +2,10 @@ package events
 
 import (
 	"encoding/json"
+	"github.com/launchboxio/operator/internal/stream"
 )
 
 type ActionCableEvent struct {
-	//RawIdentifier string `json:"identifier"`
-	//Identifier    ActionCableEventIdentifier
 	Message ActionCableEventMessage `json:"message"`
 }
 
@@ -14,6 +13,14 @@ type ActionCableEventMessage struct {
 	Type    string          `json:"type"`
 	Id      string          `json:"id"`
 	Payload json.RawMessage `json:"payload"`
+}
+
+type AckEvent struct {
+	EventId string `json:"eventId"`
+}
+
+func (ack AckEvent) Marshal() ([]byte, error) {
+	return json.Marshal(ack)
 }
 
 func (acem *ActionCableEventMessage) GetPayload() (map[string]interface{}, error) {
@@ -33,6 +40,33 @@ func (ace *ActionCableEvent) Unmarshal(data []byte) error {
 	}
 
 	return nil
+}
+
+type ProjectStatusEvent struct {
+	Status        string `json:"status"`
+	CaCertificate string `json:"ca_certificate,omitempty"`
+	Action        string `json:"action"`
+	ProjectId     int    `json:"project_id"`
+}
+
+func NewProjectStatusEvent(projectId int, status string, caCertificate []byte) *ProjectStatusEvent {
+	return &ProjectStatusEvent{
+		Action:        "project_status",
+		ProjectId:     projectId,
+		Status:        status,
+		CaCertificate: string(caCertificate),
+	}
+}
+
+func (pse ProjectStatusEvent) Marshal() ([]byte, error) {
+	data, err := json.Marshal(pse)
+	if err != nil {
+		return nil, err
+	}
+	return stream.BaseEvent{
+		Command: "message",
+		Data:    string(data),
+	}.Marshal()
 }
 
 type AckResponse struct {

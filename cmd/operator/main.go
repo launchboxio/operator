@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/controllers"
+	"github.com/launchboxio/operator/internal/events"
+	"github.com/launchboxio/operator/internal/stream"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2/clientcredentials"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -15,6 +19,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"strconv"
+	"time"
 )
 
 var (
@@ -65,9 +71,41 @@ var (
 				os.Exit(1)
 			}
 
+			var socket *stream.Stream
+			// If configuration is provided, initialize a subscribed stream
+			streamUrl := os.Getenv("STREAM_URL")
+			if streamUrl != "" {
+				streamLog := ctrl.Log.WithName("stream")
+				clusterId, _ := strconv.Atoi(os.Getenv("CLUSTER_ID"))
+				socket = stream.New(streamUrl, clientcredentials.Config{
+					ClientID:     os.Getenv("LAUNCHBOX_CLIENT_ID"),
+					ClientSecret: os.Getenv("LAUNCHBOX_CLIENT_SECRET"),
+					TokenURL:     os.Getenv("LAUNCHBOX_TOKEN_URL"),
+				}, os.Getenv("CHANNEL"), clusterId)
+
+				// Register our event handler
+				handler := events.New(streamLog, mgr.GetClient(), socket.Notify)
+				socket.AddListener(handler.Listen)
+				// Simple debug listener for logging all received messages
+				socket.AddListener(func(message []byte) error {
+					streamLog.Info(string(message))
+					return nil
+				})
+
+				// Start the stream listener in the background
+				go func() {
+					if err := stream.Retryable(socket, context.TODO(), func(err error, duration time.Duration) {
+						streamLog.Error(err, "Stream failed to start")
+					}); err != nil {
+						streamLog.Error(err, "Stream unable to start")
+					}
+				}()
+			}
+
 			if err = (&controllers.ProjectReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
+				Stream: socket,
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Project")
 				os.Exit(1)
