@@ -2,7 +2,6 @@ package stream
 
 import (
 	"context"
-	"fmt"
 	"github.com/cenkalti/backoff/v4"
 )
 
@@ -12,9 +11,7 @@ import (
 // initiate a backoff, and retry connection after some seconds
 func Retryable(stream *Stream, ctx context.Context, notify backoff.Notify) error {
 	return backoff.RetryNotify(func() error {
-		fmt.Println("Starting stream listener")
 		err := stream.Listen(ctx)
-		fmt.Println("Stream listener stopped")
 		return err
 	}, backoff.NewExponentialBackOff(), notify)
 }

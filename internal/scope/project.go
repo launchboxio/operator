@@ -3,12 +3,10 @@ package scope
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/launchboxio/operator/api/v1alpha1"
-	"github.com/launchboxio/operator/internal/events"
-	"github.com/launchboxio/operator/internal/stream"
+	lbxclient "github.com/launchboxio/operator/internal/client"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -33,7 +31,7 @@ type ProjectScope struct {
 	OidcIssuerUrl    string
 	IngressClassName string
 	Domain           string
-	Stream           *stream.Stream
+	Sdk              *lbxclient.Client
 }
 
 func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
@@ -280,20 +278,12 @@ func (scope *ProjectScope) installProviders(ctx context.Context) error {
 }
 
 func (s *ProjectScope) TransmitStatus(status string) error {
-	if s.Stream == nil {
+	if s.Sdk == nil {
 		return nil
 	}
-	projectStatusEvent := events.NewProjectStatusEvent(
-		s.Project.Spec.Id,
-		status,
-		[]byte(s.Project.Status.CaCertificate),
-	)
-	event, err := json.Marshal(projectStatusEvent)
-	if err != nil {
-		return err
-	}
-	return s.Stream.Notify(stream.BaseEvent{
-		Command: "message",
-		Data:    string(event),
+	_, err := s.Sdk.Projects().Update(s.Project.Spec.Id, &lbxclient.ProjectUpdateRequest{
+		Status:        status,
+		CaCertificate: s.Project.Status.CaCertificate,
 	})
+	return err
 }

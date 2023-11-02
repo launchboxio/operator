@@ -5,7 +5,9 @@ import (
 	"flag"
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/controllers"
+	lbxclient "github.com/launchboxio/operator/internal/client"
 	"github.com/launchboxio/operator/internal/events"
+	"github.com/launchboxio/operator/internal/pinger"
 	"github.com/launchboxio/operator/internal/stream"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	"github.com/spf13/cobra"
@@ -71,17 +73,20 @@ var (
 				os.Exit(1)
 			}
 
-			var socket *stream.Stream
+			var lbxClient *lbxclient.Client
+
 			// If configuration is provided, initialize a subscribed stream
 			streamUrl := os.Getenv("STREAM_URL")
 			if streamUrl != "" {
 				streamLog := ctrl.Log.WithName("stream")
-				clusterId, _ := strconv.Atoi(os.Getenv("CLUSTER_ID"))
-				socket = stream.New(streamUrl, clientcredentials.Config{
+
+				credentials := clientcredentials.Config{
 					ClientID:     os.Getenv("LAUNCHBOX_CLIENT_ID"),
 					ClientSecret: os.Getenv("LAUNCHBOX_CLIENT_SECRET"),
 					TokenURL:     os.Getenv("LAUNCHBOX_TOKEN_URL"),
-				}, os.Getenv("CHANNEL"), clusterId)
+				}
+				clusterId, _ := strconv.Atoi(os.Getenv("CLUSTER_ID"))
+				socket := stream.New(streamUrl, credentials, os.Getenv("CHANNEL"), clusterId)
 
 				// Register our event handler
 				handler := events.New(streamLog, mgr.GetClient(), socket.Notify)
@@ -100,12 +105,18 @@ var (
 						streamLog.Error(err, "Stream unable to start")
 					}
 				}()
+
+				lbxClient = lbxclient.New(os.Getenv("LAUNCHBOX_API_URL"), credentials)
+				ping := pinger.New(lbxClient, streamLog)
+				go func() {
+					ping.Start(clusterId)
+				}()
 			}
 
 			if err = (&controllers.ProjectReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
-				Stream: socket,
+				Sdk:    lbxClient,
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Project")
 				os.Exit(1)

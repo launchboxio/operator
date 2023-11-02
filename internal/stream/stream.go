@@ -3,7 +3,6 @@ package stream
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/websocket"
 	"golang.org/x/oauth2/clientcredentials"
@@ -76,7 +75,6 @@ func (s *Stream) Listen(ctx context.Context) error {
 	// Start our listener
 	go func() {
 		defer close(done)
-		fmt.Println("Starting listener loop")
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
@@ -98,7 +96,6 @@ func (s *Stream) Listen(ctx context.Context) error {
 	s.isConnected = true
 
 	// TODO: Process the backlog and clear it
-	fmt.Println(s.backlog)
 	for _, event := range s.backlog {
 		if err = s.Send(event); err != nil {
 			s.Logger.Error(err, "Failed sending backlogged event")
@@ -175,6 +172,5 @@ func (s *Stream) Notify(event BaseEvent) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Sending " + string(data))
 	return s.Send(data)
 }
