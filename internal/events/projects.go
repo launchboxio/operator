@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-logr/logr"
+	action_cable "github.com/launchboxio/action-cable"
 	"github.com/launchboxio/operator/api/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,60 +53,77 @@ func (ph *ProjectHandler) syncProjectResource(data []byte) error {
 	return ph.Client.Update(context.TODO(), project)
 }
 
-func (ph *ProjectHandler) Create(event *ActionCableEvent) error {
-	return ph.syncProjectResource(event.Message.Payload)
+func (ph *ProjectHandler) Create(event *action_cable.ActionCableEvent) {
+	if err := ph.syncProjectResource(event.Message); err != nil {
+		ph.Logger.Error(err, "projects.created failed")
+	}
 }
 
-func (ph *ProjectHandler) Update(event *ActionCableEvent) error {
-	return ph.syncProjectResource(event.Message.Payload)
+func (ph *ProjectHandler) Update(event *action_cable.ActionCableEvent) {
+	if err := ph.syncProjectResource(event.Message); err != nil {
+		ph.Logger.Error(err, "projects.updated failed")
+	}
 }
 
-func (ph *ProjectHandler) Delete(event *ActionCableEvent) error {
-	resource, err := projectFromPayload(event.Message.Payload)
+func (ph *ProjectHandler) Delete(event *action_cable.ActionCableEvent) {
+	resource, err := projectFromPayload(event.Message)
 	if err != nil {
-		return err
+		ph.Logger.Error(err, "projects.deleted failed")
+		return
 	}
 	project := &v1alpha1.Project{}
 	if err := ph.Client.Get(context.TODO(), client.ObjectKey{
 		Name:      resource.ObjectMeta.Name,
 		Namespace: resource.ObjectMeta.Namespace,
 	}, project); err != nil {
-		return err
+		ph.Logger.Error(err, "projects.deleted failed")
 	}
 
-	return ph.Client.Delete(context.TODO(), project)
+	if err := ph.Client.Delete(context.TODO(), project); err != nil {
+		ph.Logger.Error(err, "projects.created failed")
+	}
 }
 
-func (ph *ProjectHandler) Pause(event *ActionCableEvent) error {
-	resource, err := projectFromPayload(event.Message.Payload)
+func (ph *ProjectHandler) Pause(event *action_cable.ActionCableEvent) {
+	resource, err := projectFromPayload(event.Message)
 	if err != nil {
-		return err
+		ph.Logger.Error(err, "projects.pause failed")
+		return
 	}
 	project := &v1alpha1.Project{}
 	if err := ph.Client.Get(context.TODO(), client.ObjectKey{
 		Name:      resource.ObjectMeta.Name,
 		Namespace: resource.ObjectMeta.Namespace,
 	}, project); err != nil {
-		return err
+		ph.Logger.Error(err, "projects.pause failed")
+		return
 	}
 	project.Spec.Paused = true
-	return ph.Client.Update(context.TODO(), project)
+	if err := ph.Client.Update(context.TODO(), project); err != nil {
+		ph.Logger.Error(err, "projects.pause failed")
+		return
+	}
 }
 
-func (ph *ProjectHandler) Resume(event *ActionCableEvent) error {
-	resource, err := projectFromPayload(event.Message.Payload)
+func (ph *ProjectHandler) Resume(event *action_cable.ActionCableEvent) {
+	resource, err := projectFromPayload(event.Message)
 	if err != nil {
-		return err
+		ph.Logger.Error(err, "projects.resume failed")
+		return
 	}
 	project := &v1alpha1.Project{}
 	if err := ph.Client.Get(context.TODO(), client.ObjectKey{
 		Name:      resource.ObjectMeta.Name,
 		Namespace: resource.ObjectMeta.Namespace,
 	}, project); err != nil {
-		return err
+		ph.Logger.Error(err, "projects.resume failed")
+		return
 	}
 	project.Spec.Paused = false
-	return ph.Client.Update(context.TODO(), project)
+	if err := ph.Client.Update(context.TODO(), project); err != nil {
+		ph.Logger.Error(err, "projects.resume failed")
+		return
+	}
 }
 
 func projectFromPayload(data []byte) (*v1alpha1.Project, error) {

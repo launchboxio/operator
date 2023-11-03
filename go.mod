@@ -1,6 +1,8 @@
 module github.com/launchboxio/operator
 
-go 1.19
+go 1.21
+
+toolchain go1.21.1
 
 require (
 	github.com/crossplane/crossplane v1.13.2
@@ -49,6 +51,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/launchboxio/action-cable v0.0.0-20231103181259-b6118e8e7845 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect

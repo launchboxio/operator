@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"flag"
+	action_cable "github.com/launchboxio/action-cable"
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/controllers"
 	lbxclient "github.com/launchboxio/operator/internal/client"
 	"github.com/launchboxio/operator/internal/events"
 	"github.com/launchboxio/operator/internal/pinger"
-	"github.com/launchboxio/operator/internal/stream"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2/clientcredentials"
@@ -16,13 +16,13 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"log"
+	"net/http"
 	"os"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"strconv"
-	"time"
 )
 
 var (
@@ -86,23 +86,27 @@ var (
 					TokenURL:     os.Getenv("LAUNCHBOX_TOKEN_URL"),
 				}
 				clusterId, _ := strconv.Atoi(os.Getenv("CLUSTER_ID"))
-				socket := stream.New(streamUrl, credentials, os.Getenv("CHANNEL"), clusterId)
+				token, err := credentials.Token(context.TODO())
+				if err != nil {
+					setupLog.Error(err, "Failed authenticating to LaunchboxHQ")
+					os.Exit(1)
+				}
+				ws, err := action_cable.New(os.Getenv("WEBSOCKET_URL"), http.Header{
+					"Authorization": []string{"Bearer " + token.AccessToken},
+				})
+				if err != nil {
+					setupLog.Error(err, "Failed setting up LaunchboxHQ Stream")
+					os.Exit(1)
+				}
 
 				// Register our event handler
-				handler := events.New(streamLog, mgr.GetClient(), socket.Notify)
-				socket.AddListener(handler.Listen)
-				// Simple debug listener for logging all received messages
-				socket.AddListener(func(message []byte) error {
-					streamLog.Info(string(message))
-					return nil
-				})
+				handler := events.New(streamLog, mgr.GetClient())
+				handler.RegisterSubscriptions(ws)
 
 				// Start the stream listener in the background
 				go func() {
-					if err := stream.Retryable(socket, context.TODO(), func(err error, duration time.Duration) {
-						streamLog.Error(err, "Stream failed to start")
-					}); err != nil {
-						streamLog.Error(err, "Stream unable to start")
+					if err := ws.Connect(context.TODO()); err != nil {
+						setupLog.Error(err, "Failed connection to LaunchboxHQ Stream")
 					}
 				}()
 
