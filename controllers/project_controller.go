@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 	"os"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,6 +64,7 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	logger := log.FromContext(ctx)
 
 	logger.Info("Starting reconcile")
+
 	project := &corev1alpha1.Project{}
 	err := r.Get(ctx, req.NamespacedName, project)
 	if err != nil {
@@ -75,6 +77,19 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	clusterList := &corev1alpha1.ClusterList{}
+	err = r.List(ctx, clusterList)
+	if err != nil {
+		logger.Error(err, "Failed looking up cluster configurations")
+		return ctrl.Result{}, err
+	}
+
+	if len(clusterList.Items) == 0 {
+		logger.Error(err, "No cluster configurations provided")
+		return ctrl.Result{RequeueAfter: time.Minute * 1}, err
+	}
+	cluster := clusterList.Items[0]
+
 	projectLogger := logger.WithValues("project", project.Spec.Slug)
 
 	dynClient, err := r.LoadDynamicClient()
@@ -83,21 +98,13 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	oidcClientId := os.Getenv("OIDC_CLIENT_ID")
-	oidcIssuerUrl := os.Getenv("OIDC_ISSUER_URL")
-	ingressClassName := os.Getenv("INGRESS_CLASS_NAME")
-	domain := os.Getenv("DOMAIN")
-
 	projectScope := scope.ProjectScope{
-		Project:          project,
-		Logger:           projectLogger,
-		Client:           r.Client,
-		DynamicClient:    dynClient,
-		OidcClientId:     oidcClientId,
-		OidcIssuerUrl:    oidcIssuerUrl,
-		IngressClassName: ingressClassName,
-		Domain:           domain,
-		Sdk:              r.Sdk,
+		Project:       project,
+		Logger:        projectLogger,
+		Client:        r.Client,
+		DynamicClient: dynClient,
+		Cluster:       cluster,
+		Sdk:           r.Sdk,
 	}
 	return projectScope.Reconcile(ctx, req)
 }

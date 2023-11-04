@@ -1,0 +1,110 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.10.0
+  creationTimestamp: null
+  name: clusters.core.launchboxhq.io
+spec:
+  group: core.launchboxhq.io
+  names:
+    kind: Cluster
+    listKind: ClusterList
+    plural: clusters
+    singular: cluster
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Cluster is the Schema for the clusters API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ClusterSpec defines the desired state of Cluster
+            properties:
+              clusterId:
+                type: integer
+              credentialsRef:
+                description: Foo is an example field of Cluster. Edit cluster_types.go
+                  to remove/update
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              ingress:
+                properties:
+                  className:
+                    description: ClassName represents the ingressClassName for guest
+                      clusters
+                    type: string
+                  domain:
+                    description: Domain is the root domain to use for guest cluster
+                      access
+                    type: string
+                required:
+                - className
+                - domain
+                type: object
+              launchbox:
+                properties:
+                  channel:
+                    description: Channel is the stream channel to subscribe to for
+                      events
+                    type: string
+                  streamUrl:
+                    description: StreamUrl is the endpoint for real time streaming
+                    type: string
+                  tokenUrl:
+                    description: TokenUrl is the endpoint for exchanging client credentials
+                      for a token
+                    type: string
+                type: object
+              oidc:
+                properties:
+                  clientId:
+                    description: ClientId is the OIDC ClientID to configure guest
+                      cluster's OIDC authentication
+                    type: string
+                  issuerUrl:
+                    description: IssuerUrl is the IssuerUrl to configure guest cluster's
+                      OIDC authentication
+                    type: string
+                required:
+                - clientId
+                - issuerUrl
+                type: object
+            required:
+            - clusterId
+            - credentialsRef
+            - ingress
+            - launchbox
+            - oidc
+            type: object
+          status:
+            description: ClusterStatus defines the observed state of Cluster
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

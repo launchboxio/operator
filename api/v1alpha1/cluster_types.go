@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,7 +30,42 @@ type ClusterSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Cluster. Edit cluster_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	CredentialsRef *v1.SecretReference `json:"credentialsRef"`
+
+	Launchbox ClusterLaunchboxSpec `json:"launchbox"`
+
+	Oidc ClusterOidcSpec `json:"oidc"`
+
+	ClusterId int `json:"clusterId"`
+
+	Ingress ClusterIngressSpec `json:"ingress"`
+}
+
+type ClusterLaunchboxSpec struct {
+	// StreamUrl is the endpoint for real time streaming
+	StreamUrl string `json:"streamUrl,omitempty"`
+
+	// TokenUrl is the endpoint for exchanging client credentials for a token
+	TokenUrl string `json:"tokenUrl,omitempty"`
+
+	// Channel is the stream channel to subscribe to for events
+	Channel string `json:"channel,omitempty"`
+}
+
+type ClusterOidcSpec struct {
+	// ClientId is the OIDC ClientID to configure guest cluster's OIDC authentication
+	ClientId string `json:"clientId"`
+
+	// IssuerUrl is the IssuerUrl to configure guest cluster's OIDC authentication
+	IssuerUrl string `json:"issuerUrl"`
+}
+
+type ClusterIngressSpec struct {
+	// ClassName represents the ingressClassName for guest clusters
+	ClassName string `json:"className"`
+
+	// Domain is the root domain to use for guest cluster access
+	Domain string `json:"domain"`
 }
 
 // ClusterStatus defines the observed state of Cluster
