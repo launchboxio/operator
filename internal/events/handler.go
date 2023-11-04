@@ -1,6 +1,7 @@
 package events
 
 import (
+	"encoding/json"
 	"github.com/go-logr/logr"
 	action_cable "github.com/launchboxio/action-cable"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,18 +20,22 @@ func New(logger logr.Logger, client client.Client) *Handler {
 	return handler
 }
 
-func (h *Handler) RegisterSubscriptions(stream *action_cable.Stream) {
-	subscription := action_cable.NewSubscription(map[string]string{
-		"cluster_id": "1",
-		"channel":    "ClusterChannel",
-	})
+type HandlerFunc func(event *LaunchboxEvent) error
+
+func (h *Handler) RegisterSubscriptions(stream *action_cable.Stream, identifier map[string]string) {
+	subscription := action_cable.NewSubscription(identifier)
 
 	projectHandler := h.projectHandler()
 	//addonHandler := h.addonHandler()
 
 	subscription.Handler(func(event *action_cable.ActionCableEvent) {
-		var handler action_cable.HandlerFunc
-		switch event.Type {
+		var handler HandlerFunc
+		parsedEvent := &LaunchboxEvent{}
+		err := json.Unmarshal(event.Message, parsedEvent)
+		if err != nil {
+			h.Logger.Error(err, "Failed parsing event")
+		}
+		switch parsedEvent.Type {
 		case "projects.created":
 			handler = projectHandler.Create
 		case "projects.updated":
@@ -42,8 +47,12 @@ func (h *Handler) RegisterSubscriptions(stream *action_cable.Stream) {
 		case "projects.resumed":
 			handler = projectHandler.Resume
 		}
-		handler(event)
+		if err := handler(parsedEvent); err != nil {
+			h.Logger.Error(err, "Handler execution failed", "event", parsedEvent.Type)
+		}
 	})
+
+	stream.Subscribe(subscription)
 
 	//router.Subscribe(AddonCreatedEvent, addonHandler.Create)
 	//router.Subscribe(AddonUpdatedEvent, addonHandler.Update)
@@ -62,9 +71,10 @@ func (h *Handler) projectHandler() *ProjectHandler {
 	}
 }
 
-func (h *Handler) addonHandler() *AddonHandler {
-	return &AddonHandler{
-		Logger: h.Logger,
-		Client: h.Client,
-	}
-}
+//
+//func (h *Handler) addonHandler() *AddonHandler {
+//	return &AddonHandler{
+//		Logger: h.Logger,
+//		Client: h.Client,
+//	}
+//}

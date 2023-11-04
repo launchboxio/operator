@@ -11,3 +11,8 @@ const (
 	AddonDeletedEvent          = "addons.delete"
 	PingEvent                  = "ping"
 )
+
+type LaunchboxEvent struct {
+	Type string                 `json:"type"`
+	Data map[string]interface{} `json:"data,omitempty"`
+}

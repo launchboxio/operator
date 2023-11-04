@@ -85,13 +85,14 @@ var (
 					ClientSecret: os.Getenv("LAUNCHBOX_CLIENT_SECRET"),
 					TokenURL:     os.Getenv("LAUNCHBOX_TOKEN_URL"),
 				}
-				clusterId, _ := strconv.Atoi(os.Getenv("CLUSTER_ID"))
+				clusterId := os.Getenv("CLUSTER_ID")
+				channel := os.Getenv("CHANNEL")
 				token, err := credentials.Token(context.TODO())
 				if err != nil {
 					setupLog.Error(err, "Failed authenticating to LaunchboxHQ")
 					os.Exit(1)
 				}
-				ws, err := action_cable.New(os.Getenv("WEBSOCKET_URL"), http.Header{
+				ws, err := action_cable.New(os.Getenv("STREAM_URL"), http.Header{
 					"Authorization": []string{"Bearer " + token.AccessToken},
 				})
 				if err != nil {
@@ -101,7 +102,10 @@ var (
 
 				// Register our event handler
 				handler := events.New(streamLog, mgr.GetClient())
-				handler.RegisterSubscriptions(ws)
+				handler.RegisterSubscriptions(ws, map[string]string{
+					"cluster_id": clusterId,
+					"channel":    channel,
+				})
 
 				// Start the stream listener in the background
 				go func() {
@@ -113,7 +117,11 @@ var (
 				lbxClient = lbxclient.New(os.Getenv("LAUNCHBOX_API_URL"), credentials)
 				ping := pinger.New(lbxClient, streamLog)
 				go func() {
-					ping.Start(clusterId)
+					cid, err := strconv.Atoi(clusterId)
+					if err != nil {
+						setupLog.Error(err, "Failed setting up operator/ping")
+					}
+					ping.Start(cid)
 				}()
 			}
 
