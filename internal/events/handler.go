@@ -26,7 +26,7 @@ func (h *Handler) RegisterSubscriptions(stream *action_cable.Stream, identifier 
 	subscription := action_cable.NewSubscription(identifier)
 
 	projectHandler := h.projectHandler()
-	//addonHandler := h.addonHandler()
+	addonHandler := h.addonHandler()
 
 	subscription.Handler(func(event *action_cable.ActionCableEvent) {
 		var handler HandlerFunc
@@ -46,6 +46,12 @@ func (h *Handler) RegisterSubscriptions(stream *action_cable.Stream, identifier 
 			handler = projectHandler.Pause
 		case "projects.resumed":
 			handler = projectHandler.Resume
+		case "addons.created":
+			handler = addonHandler.Create
+		case "addons.updated":
+			handler = addonHandler.Update
+		case "addons.deleted":
+			handler = addonHandler.Delete
 		}
 		if err := handler(parsedEvent); err != nil {
 			h.Logger.Error(err, "Handler execution failed", "event", parsedEvent.Type)
@@ -53,15 +59,6 @@ func (h *Handler) RegisterSubscriptions(stream *action_cable.Stream, identifier 
 	})
 
 	stream.Subscribe(subscription)
-
-	//router.Subscribe(AddonCreatedEvent, addonHandler.Create)
-	//router.Subscribe(AddonUpdatedEvent, addonHandler.Update)
-	//router.Subscribe(AddonDeletedEvent, addonHandler.Delete)
-}
-
-func (h *Handler) ackMessage(eventId string) error {
-	//return h.SendFunc(AckEvent{EventId: eventId})
-	return nil
 }
 
 func (h *Handler) projectHandler() *ProjectHandler {
@@ -71,10 +68,9 @@ func (h *Handler) projectHandler() *ProjectHandler {
 	}
 }
 
-//
-//func (h *Handler) addonHandler() *AddonHandler {
-//	return &AddonHandler{
-//		Logger: h.Logger,
-//		Client: h.Client,
-//	}
-//}
+func (h *Handler) addonHandler() *AddonHandler {
+	return &AddonHandler{
+		Logger: h.Logger,
+		Client: h.Client,
+	}
+}
