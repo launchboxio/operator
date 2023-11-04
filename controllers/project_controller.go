@@ -18,8 +18,8 @@ package controllers
 
 import (
 	"context"
+	lbxclient "github.com/launchboxio/operator/internal/client"
 	"github.com/launchboxio/operator/internal/scope"
-	"github.com/launchboxio/operator/internal/stream"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/dynamic"
@@ -42,7 +42,7 @@ import (
 type ProjectReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Stream *stream.Stream
+	Sdk    *lbxclient.Client
 }
 
 //+kubebuilder:rbac:groups=core.launchboxhq.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
@@ -97,7 +97,7 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		OidcIssuerUrl:    oidcIssuerUrl,
 		IngressClassName: ingressClassName,
 		Domain:           domain,
-		Stream:           r.Stream,
+		Sdk:              r.Sdk,
 	}
 	return projectScope.Reconcile(ctx, req)
 }
