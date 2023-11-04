@@ -29,4 +29,12 @@ resources:
   kind: Config
   path: github.com/launchboxio/operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: launchboxhq.io
+  group: core
+  kind: Cluster
+  path: github.com/launchboxio/operator/api/v1alpha1
+  version: v1alpha1
 version: "3"
