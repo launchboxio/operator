@@ -39,6 +39,8 @@ type ClusterSpec struct {
 	ClusterId int `json:"clusterId"`
 
 	Ingress ClusterIngressSpec `json:"ingress"`
+
+	Agent ClusterAgentSpec `json:"agent"`
 }
 
 type ClusterLaunchboxSpec struct {
@@ -66,6 +68,14 @@ type ClusterIngressSpec struct {
 
 	// Domain is the root domain to use for guest cluster access
 	Domain string `json:"domain"`
+}
+
+type ClusterAgentSpec struct {
+	Repository string        `json:"repository,omitempty"`
+	Tag        string        `json:"tag,omitempty"`
+	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
+
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 }
 
 // ClusterStatus defines the observed state of Cluster

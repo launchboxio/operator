@@ -1,4 +1,4 @@
-package scope
+package project
 
 import (
 	"github.com/launchboxio/operator/api/v1alpha1"
