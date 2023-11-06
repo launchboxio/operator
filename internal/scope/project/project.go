@@ -26,7 +26,7 @@ type Scope struct {
 	Logger        logr.Logger
 	Client        client.Client
 	DynamicClient *dynamic.DynamicClient
-	Cluster       v1alpha1.Cluster
+	Cluster       *v1alpha1.Cluster
 }
 
 func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {

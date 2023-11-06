@@ -50,6 +50,9 @@ type ClusterLaunchboxSpec struct {
 	// TokenUrl is the endpoint for exchanging client credentials for a token
 	TokenUrl string `json:"tokenUrl,omitempty"`
 
+	// ApiUrl is the API endpoint for Launchbox
+	ApiUrl string `json:"apiUrl,omitempty"`
+
 	// Channel is the stream channel to subscribe to for events
 	Channel string `json:"channel,omitempty"`
 }
@@ -71,10 +74,10 @@ type ClusterIngressSpec struct {
 }
 
 type ClusterAgentSpec struct {
-	Repository string        `json:"repository,omitempty"`
-	Tag        string        `json:"tag,omitempty"`
-	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
-
+	Repository     string            `json:"repository,omitempty"`
+	Tag            string            `json:"tag,omitempty"`
+	PullPolicy     v1.PullPolicy     `json:"pullPolicy,omitempty"`
+	ChartVersion   string            `json:"chartVersion,omitempty"`
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 }
 
@@ -82,6 +85,11 @@ type ClusterAgentSpec struct {
 type ClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Conditions []metav1.Condition `json:"conditions"`
+}
+
+func (c *Cluster) GetConditions() []metav1.Condition {
+	return c.Status.Conditions
 }
 
 //+kubebuilder:object:root=true

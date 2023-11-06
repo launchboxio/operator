@@ -19,7 +19,8 @@ package controllers
 import (
 	"context"
 	"github.com/launchboxio/operator/api/v1alpha1"
-
+	clusterscope "github.com/launchboxio/operator/internal/scope/cluster"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,18 +47,32 @@ type ClusterReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// TODO: Get our cluster configuration
-	cluster := v1alpha1.Cluster{}
+	cluster := &v1alpha1.Cluster{}
+	err := r.Get(ctx, req.NamespacedName, cluster)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("Resource not found, must be deleted")
+			return ctrl.Result{}, nil
+		}
+		logger.Error(err, "Failed looking up cluster resource")
+		return ctrl.Result{}, err
+	}
 
-	return ctrl.Result{}, nil
+	clusterScope := clusterscope.Scope{
+		Cluster: cluster,
+		Client:  r.Client,
+	}
+
+	return clusterScope.Reconcile(ctx, req)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
+		For(&v1alpha1.Cluster{}).
 		Complete(r)
 }

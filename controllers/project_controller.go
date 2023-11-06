@@ -18,22 +18,24 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	projectscope "github.com/launchboxio/operator/internal/scope/project"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"os"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"time"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 )
@@ -75,18 +77,21 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	clusterList := &corev1alpha1.ClusterList{}
-	err = r.List(ctx, clusterList)
+	cluster := &corev1alpha1.Cluster{}
+	err = r.Get(ctx, types.NamespacedName{
+		Name:      "default",
+		Namespace: "lbx-system",
+	}, cluster)
 	if err != nil {
 		logger.Error(err, "Failed looking up cluster configurations")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	}
 
-	if len(clusterList.Items) == 0 {
-		logger.Error(err, "No cluster configurations provided")
-		return ctrl.Result{RequeueAfter: time.Minute * 1}, err
+	// Check conditions.Ready
+	if meta.IsStatusConditionFalse(cluster.GetConditions(), "Ready") {
+		logger.Error(errors.New("Cluster not ready"), "Waiting for cluster to become ready")
+		return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	}
-	cluster := clusterList.Items[0]
 
 	projectLogger := logger.WithValues("project", project.Spec.Slug)
 

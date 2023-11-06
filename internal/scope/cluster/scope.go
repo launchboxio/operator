@@ -1,15 +1,18 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/launchboxio/operator/api/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	helmclient "github.com/mittwald/go-helm-client"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"text/template"
 )
 
 type Scope struct {
@@ -17,62 +20,108 @@ type Scope struct {
 	Client  client.Client
 }
 
+const clusterFinalizer = "core.launchboxhq.io/finalizer"
+
 func (s *Scope) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// TODO: Create the cluster role and cluster role bindings
+	conf := config.GetConfigOrDie()
+	helm, err := helmclient.NewClientFromRestConf(&helmclient.RestConfClientOptions{
+		RestConfig: conf,
+		Options: &helmclient.Options{
+			Debug:     true,
+			Namespace: "lbx-system",
+		},
+	})
 
-	// Create the service account
-	serviceAccount := &v1.ServiceAccount{}
-	if err := s.Client.Get(ctx, req.NamespacedName, serviceAccount); err != nil {
-		if apierrors.IsNotFound(err) {
-			sa := &v1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      req.Name,
-					Namespace: req.Namespace,
-				},
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	values, err := generateAgentValues(s.Cluster.Spec)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	chartSpec := &helmclient.ChartSpec{
+		ReleaseName: "agent",
+		ChartName:   "oci://ghcr.io/launchboxio/agent/helm/agent",
+		Namespace:   "lbx-system",
+		Version:     s.Cluster.Spec.Agent.ChartVersion,
+		ValuesYaml:  string(values),
+	}
+
+	isAgentMarkedToBeDeleted := s.Cluster.GetDeletionTimestamp() != nil
+	if isAgentMarkedToBeDeleted {
+		if controllerutil.ContainsFinalizer(s.Cluster, clusterFinalizer) {
+			rel, err := helm.GetRelease(chartSpec.ReleaseName)
+			if rel != nil {
+				if err := helm.UninstallRelease(chartSpec); err != nil {
+					return ctrl.Result{}, err
+				}
 			}
-			ctrl.SetControllerReference(s.Cluster, sa, s.Client.Scheme())
-			err = s.Client.Create(ctx, sa)
-			return ctrl.Result{Requeue: true}, err
+
+			controllerutil.RemoveFinalizer(s.Cluster, clusterFinalizer)
+			err = s.Client.Update(ctx, s.Cluster)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
+		return ctrl.Result{}, nil
+	}
+
+	if _, err = helm.InstallOrUpgradeChart(ctx, &helmclient.ChartSpec{
+		ReleaseName: "agent",
+		ChartName:   "oci://ghcr.io/launchboxio/agent/helm/agent",
+		Namespace:   "lbx-system",
+		Version:     s.Cluster.Spec.Agent.ChartVersion,
+		ValuesYaml:  string(values),
+	}, nil); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// Create the deployment
-	deployment := &appsv1.Deployment{}
-	if err := s.Client.Get(ctx, req.NamespacedName, deployment); err != nil {
-		if apierrors.IsNotFound(err) {
-			return s.createDeployment()
+	if !controllerutil.ContainsFinalizer(s.Cluster, clusterFinalizer) {
+		controllerutil.AddFinalizer(s.Cluster, clusterFinalizer)
+		err = s.Client.Update(ctx, s.Cluster)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
 	}
 
-	// Update the status for the cluster
-	return ctrl.Result{}, nil
+	// Finally, update the status conditions
+	fmt.Println("Updating status conditions")
+	meta.SetStatusCondition(&s.Cluster.Status.Conditions, metav1.Condition{
+		Type:    "Ready",
+		Status:  metav1.ConditionTrue,
+		Reason:  "Installed",
+		Message: fmt.Sprintf("Chart %s has been installed", chartSpec.Version),
+	})
+	return ctrl.Result{}, s.Client.Status().Update(ctx, s.Cluster)
+
 }
 
-func (s *Scope) createDeployment(ctx context.Context) (ctrl.Result, error) {
-	agentSpec := s.Cluster.Spec.Agent
-	deployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      s.Cluster.Name,
-			Namespace: s.Cluster.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Name:            "agent",
-							Image:           fmt.Sprintf("%s:%s", agentSpec.Repository, agentSpec.Tag),
-							ImagePullPolicy: agentSpec.PullPolicy,
-						},
-					},
-				},
-			},
-		},
+func generateAgentValues(spec v1alpha1.ClusterSpec) ([]byte, error) {
+	tmpl, err := template.New("values").Parse(`
+image:
+  {{- if .Agent.Repository }}
+  repository: "{{ .Agent.Repository }}"
+  {{- end }}
+  {{- if .Agent.PullPolicy }}
+  pullPolicy: "{{ .Agent.PullPolicy }}"
+  {{- end }}
+  {{- if .Agent.Tag }}
+  tag: "{{ .Agent.Tag }}"
+  {{- end }}
+agent:
+  tokenUrl: {{ .Launchbox.TokenUrl }}
+  apiUrl: {{ .Launchbox.ApiUrl }}
+  streamUrl: {{ .Launchbox.StreamUrl }}
+  clusterId: {{ .ClusterId }}
+  channel: {{ .Launchbox.Channel }}
+credentialsSecret:
+  name: {{ .CredentialsRef.Name }}
+`)
+	if err != nil {
+		return nil, err
 	}
-
-	err := s.Client.Create(ctx, deployment)
-	return ctrl.Result{}, err
+	var values bytes.Buffer
+	err = tmpl.Execute(&values, spec)
+	return values.Bytes(), err
 }

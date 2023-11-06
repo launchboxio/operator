@@ -17,6 +17,32 @@ rules:
 - apiGroups:
   - core.launchboxhq.io
   resources:
+  - clusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.launchboxhq.io
+  resources:
+  - clusters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.launchboxhq.io
+  resources:
+  - clusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.launchboxhq.io
+  resources:
   - projects
   verbs:
   - create
