@@ -17,7 +17,7 @@ rules:
 - apiGroups:
   - core.launchboxhq.io
   resources:
-  - configs
+  - clusters
   verbs:
   - create
   - delete
@@ -29,13 +29,13 @@ rules:
 - apiGroups:
   - core.launchboxhq.io
   resources:
-  - configs/finalizers
+  - clusters/finalizers
   verbs:
   - update
 - apiGroups:
   - core.launchboxhq.io
   resources:
-  - configs/status
+  - clusters/status
   verbs:
   - get
   - patch

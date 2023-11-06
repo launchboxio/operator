@@ -1,4 +1,4 @@
-package scope
+package project
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/launchboxio/operator/api/v1alpha1"
-	lbxclient "github.com/launchboxio/operator/internal/client"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -22,19 +21,15 @@ import (
 	"time"
 )
 
-type ProjectScope struct {
-	Project          *v1alpha1.Project
-	Logger           logr.Logger
-	Client           client.Client
-	DynamicClient    *dynamic.DynamicClient
-	OidcClientId     string
-	OidcIssuerUrl    string
-	IngressClassName string
-	Domain           string
-	Sdk              *lbxclient.Client
+type Scope struct {
+	Project       *v1alpha1.Project
+	Logger        logr.Logger
+	Client        client.Client
+	DynamicClient *dynamic.DynamicClient
+	Cluster       *v1alpha1.Cluster
 }
 
-func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	identifier := scope.Project.Spec.Slug
 	kubernetesVersion := scope.Project.Spec.KubernetesVersion
 	defaultMeta := metav1.ObjectMeta{
@@ -98,7 +93,6 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 
 	if values.String() != infrastructure.Spec.HelmRelease.Values {
 		scope.Logger.Info("Updating helm values")
-		_ = scope.TransmitStatus("provisioning")
 		infrastructure.Spec.HelmRelease.Values = values.String()
 		err := scope.Client.Update(ctx, infrastructure)
 		return ctrl.Result{Requeue: true}, err
@@ -154,8 +148,6 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 		return ctrl.Result{Requeue: true}, err
 	}
 
-	_ = scope.TransmitStatus("provisioned")
-
 	// Install any necessary crossplane providers
 	// TODO: Support dynamic provisioning. For now, we just install Kubernetes and Helm
 	if err := scope.installProviders(ctx); err != nil {
@@ -182,7 +174,6 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	if *statefulSet.Spec.Replicas != desiredReplicas {
-		_ = scope.TransmitStatus("provisioning")
 		scope.Logger.Info(fmt.Sprintf("Updating statefulset to %d replicas", desiredReplicas))
 		statefulSet.Spec.Replicas = &desiredReplicas
 		if err := scope.Client.Update(ctx, statefulSet); err != nil {
@@ -195,7 +186,6 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 	// If paused, we also need to terminate all the running pods
 	if scope.Project.Spec.Paused == true {
 		pod := &v1.Pod{}
-		_ = scope.TransmitStatus("pausing")
 		if err := scope.Client.DeleteAllOf(ctx, pod, []client.DeleteAllOfOption{
 			client.InNamespace(identifier),
 			client.MatchingLabels{"vcluster.loft.sh/managed-by": identifier},
@@ -204,17 +194,13 @@ func (scope *ProjectScope) Reconcile(ctx context.Context, request ctrl.Request) 
 			scope.Logger.Error(err, "Failed to delete running pods")
 			return ctrl.Result{}, err
 		}
-		_ = scope.TransmitStatus("paused")
-	} else {
-		_ = scope.TransmitStatus("provisioned")
 	}
-
 	// TODO: We shouldn't manually requeue. Instead, we should fix the generation
 	// observation to start execution on changes
 	return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
 }
 
-func getValuesArgs(scope *ProjectScope) ValuesTemplateArgs {
+func getValuesArgs(scope *Scope) ValuesTemplateArgs {
 	project := scope.Project
 	args := ValuesTemplateArgs{
 		ProjectId:   project.Spec.Id,
@@ -226,16 +212,20 @@ func getValuesArgs(scope *ProjectScope) ValuesTemplateArgs {
 		Oidc: struct {
 			ClientId  string
 			IssuerUrl string
-		}{ClientId: scope.OidcClientId, IssuerUrl: scope.OidcIssuerUrl},
+		}{
+			ClientId:  scope.Cluster.Spec.Oidc.ClientId,
+			IssuerUrl: scope.Cluster.Spec.Oidc.IssuerUrl},
 		Ingress: struct {
 			ClassName string
 			Domain    string
-		}{ClassName: scope.IngressClassName, Domain: scope.Domain},
+		}{
+			ClassName: scope.Cluster.Spec.Ingress.ClassName,
+			Domain:    scope.Cluster.Spec.Ingress.Domain},
 	}
 	return args
 }
 
-func (scope *ProjectScope) installProviders(ctx context.Context) error {
+func (scope *Scope) installProviders(ctx context.Context) error {
 
 	for _, provider := range []schema.GroupVersionResource{
 		{Group: "helm.crossplane.io", Version: "v1beta1", Resource: "providerconfigs"},
@@ -275,15 +265,4 @@ func (scope *ProjectScope) installProviders(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (s *ProjectScope) TransmitStatus(status string) error {
-	if s.Sdk == nil {
-		return nil
-	}
-	_, err := s.Sdk.Projects().Update(s.Project.Spec.Id, &lbxclient.ProjectUpdateRequest{
-		Status:        status,
-		CaCertificate: s.Project.Status.CaCertificate,
-	})
-	return err
 }

@@ -18,22 +18,24 @@ package controllers
 
 import (
 	"context"
-	lbxclient "github.com/launchboxio/operator/internal/client"
-	"github.com/launchboxio/operator/internal/scope"
+	"errors"
+	projectscope "github.com/launchboxio/operator/internal/scope/project"
 	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"os"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 )
@@ -42,7 +44,6 @@ import (
 type ProjectReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Sdk    *lbxclient.Client
 }
 
 //+kubebuilder:rbac:groups=core.launchboxhq.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
@@ -63,6 +64,7 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	logger := log.FromContext(ctx)
 
 	logger.Info("Starting reconcile")
+
 	project := &corev1alpha1.Project{}
 	err := r.Get(ctx, req.NamespacedName, project)
 	if err != nil {
@@ -75,6 +77,22 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	cluster := &corev1alpha1.Cluster{}
+	err = r.Get(ctx, types.NamespacedName{
+		Name:      "default",
+		Namespace: "lbx-system",
+	}, cluster)
+	if err != nil {
+		logger.Error(err, "Failed looking up cluster configurations")
+		return ctrl.Result{RequeueAfter: time.Second * 10}, err
+	}
+
+	// Check conditions.Ready
+	if meta.IsStatusConditionFalse(cluster.GetConditions(), "Ready") {
+		logger.Error(errors.New("Cluster not ready"), "Waiting for cluster to become ready")
+		return ctrl.Result{RequeueAfter: time.Second * 10}, err
+	}
+
 	projectLogger := logger.WithValues("project", project.Spec.Slug)
 
 	dynClient, err := r.LoadDynamicClient()
@@ -83,21 +101,12 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	oidcClientId := os.Getenv("OIDC_CLIENT_ID")
-	oidcIssuerUrl := os.Getenv("OIDC_ISSUER_URL")
-	ingressClassName := os.Getenv("INGRESS_CLASS_NAME")
-	domain := os.Getenv("DOMAIN")
-
-	projectScope := scope.ProjectScope{
-		Project:          project,
-		Logger:           projectLogger,
-		Client:           r.Client,
-		DynamicClient:    dynClient,
-		OidcClientId:     oidcClientId,
-		OidcIssuerUrl:    oidcIssuerUrl,
-		IngressClassName: ingressClassName,
-		Domain:           domain,
-		Sdk:              r.Sdk,
+	projectScope := projectscope.Scope{
+		Project:       project,
+		Logger:        projectLogger,
+		Client:        r.Client,
+		DynamicClient: dynClient,
+		Cluster:       cluster,
 	}
 	return projectScope.Reconcile(ctx, req)
 }

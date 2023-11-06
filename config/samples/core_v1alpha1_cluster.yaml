@@ -1,0 +1,25 @@
+apiVersion: core.launchboxhq.io/v1alpha1
+kind: Cluster
+metadata:
+  name: default
+  namespace: lbx-system
+spec:
+  credentialsRef:
+    name: launchboxhq-credentials
+    namespace: lbx-system
+  oidc:
+    clientId:
+    issuerUrl:
+  launchbox:
+    streamUrl:
+    tokenUrl:
+    apiUrl:
+    channel:
+  clusterId:
+  ingress:
+    className: default
+    domain:
+  agent:
+    tag: latest
+    pullPolicy: Always
+    chartVersion: "0.3.0"
