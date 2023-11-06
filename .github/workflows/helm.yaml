@@ -13,10 +13,12 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v2
       - uses: chrisdickinson/setup-yq@latest
+        with:
+          yq-version: v4.25.3
       - name: Get Chart version
         id: chart_version
         run: |
-          version=$(yq r 'deploy/charts/operator/Chart.yaml' .version)
+          version=$(yq .version 'deploy/charts/operator/Chart.yaml')
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Chart | Push
         uses: appany/helm-oci-chart-releaser@v0.3.0
