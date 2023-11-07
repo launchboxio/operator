@@ -1,0 +1,21 @@
+name: Publish
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v2
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: config/crd/bases/*
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
