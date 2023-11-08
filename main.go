@@ -66,58 +66,6 @@ var (
 				os.Exit(1)
 			}
 
-			//var lbxClient *lbxclient.Client
-			//
-			//// If configuration is provided, initialize a subscribed stream
-			//streamUrl := os.Getenv("STREAM_URL")
-			//if streamUrl != "" {
-			//	streamLog := ctrl.Log.WithName("stream")
-			//
-			//	credentials := clientcredentials.Config{
-			//		ClientID:     os.Getenv("LAUNCHBOX_CLIENT_ID"),
-			//		ClientSecret: os.Getenv("LAUNCHBOX_CLIENT_SECRET"),
-			//		TokenURL:     os.Getenv("LAUNCHBOX_TOKEN_URL"),
-			//	}
-			//	clusterId := os.Getenv("CLUSTER_ID")
-			//	channel := os.Getenv("CHANNEL")
-			//	token, err := credentials.Token(context.TODO())
-			//	if err != nil {
-			//		setupLog.Error(err, "Failed authenticating to LaunchboxHQ")
-			//		os.Exit(1)
-			//	}
-			//	ws, err := action_cable.New(os.Getenv("STREAM_URL"), http.Header{
-			//		"Authorization": []string{"Bearer " + token.AccessToken},
-			//	})
-			//	if err != nil {
-			//		setupLog.Error(err, "Failed setting up LaunchboxHQ Stream")
-			//		os.Exit(1)
-			//	}
-			//
-			//	// Register our event handler
-			//	handler := events.New(streamLog, mgr.GetClient())
-			//	handler.RegisterSubscriptions(ws, map[string]string{
-			//		"cluster_id": clusterId,
-			//		"channel":    channel,
-			//	})
-			//
-			//	// Start the stream listener in the background
-			//	go func() {
-			//		if err := ws.Connect(context.TODO()); err != nil {
-			//			setupLog.Error(err, "Failed connection to LaunchboxHQ Stream")
-			//		}
-			//	}()
-			//
-			//	lbxClient = lbxclient.New(os.Getenv("LAUNCHBOX_API_URL"), credentials)
-			//	ping := pinger.New(lbxClient, streamLog)
-			//	go func() {
-			//		cid, err := strconv.Atoi(clusterId)
-			//		if err != nil {
-			//			setupLog.Error(err, "Failed setting up operator/ping")
-			//		}
-			//		ping.Start(cid)
-			//	}()
-			//}
-
 			if err = (&controllers.ProjectReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),

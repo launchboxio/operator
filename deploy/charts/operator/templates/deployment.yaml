@@ -31,29 +31,6 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: OIDC_CLIENT_ID
-              value: {{ .Values.oidc.clientId }}
-            - name: OIDC_ISSUER_URL
-              value: {{ .Values.oidc.issuerUrl }}
-            - name: INGRESS_CLASS_NAME
-              value: {{ .Values.operator.ingressClassName }}
-            - name: DOMAIN
-              value: {{ .Values.operator.domain }}
-            {{- if .Values.stream.enabled }}
-            - name: STREAM_URL
-              value: {{ .Values.stream.url }}
-            - name: CLUSTER_ID
-              value: {{ .Values.stream.clusterId | quote }}
-            - name: LAUNCHBOX_TOKEN_URL
-              value: {{ .Values.stream.tokenUrl }}
-            - name: LAUNCHBOX_CLIENT_ID
-              value: {{ .Values.stream.clientId }}
-            - name: LAUNCHBOX_CLIENT_SECRET
-              value: {{ .Values.stream.clientSecret }}
-            - name: CHANNEL
-              value: {{ .Values.stream.channel }}
-            {{- end }}
           ports:
             - name: http
               containerPort: 8081
