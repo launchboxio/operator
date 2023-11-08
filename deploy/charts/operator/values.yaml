@@ -53,20 +53,3 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-
-oidc:
-  clientId: "_CxhiJICJtLqbmx_tJmgdvIXA1fYV3kE1A72EdFyuJY"
-  issuerUrl: "https://launchboxhq.dev"
-
-stream:
-  enabled: true
-  url: "wss://launchboxhq.io/cable"
-  tokenUrl: "https://launchboxhq.io/oauth/token"
-  clientId: ""
-  clientSecret: ""
-  clusterId:
-  channel: "ClusterChannel"
-
-operator:
-  ingressClassName: nginx
-  domain: https://launchboxhq.io
