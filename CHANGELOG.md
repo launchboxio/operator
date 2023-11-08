@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+### [1.0.2](https://github.com/launchboxio/operator/compare/v1.0.1...v1.0.2) (2023-11-08)
+
+
+### Bug Fixes
+
+* Also update project status when resource is deployed ([e31cdad](https://github.com/launchboxio/operator/commit/e31cdad683c863d8ee475f986b0fa84edd6a1848))
+
 ### [1.0.1](https://github.com/launchboxio/operator/compare/v1.0.0...v1.0.1) (2023-11-08)
 
 
