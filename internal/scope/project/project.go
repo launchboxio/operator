@@ -144,6 +144,7 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 	if scope.Project.Status.CaCertificate != string(secret.Data["certificate-authority"]) {
 		scope.Logger.Info("Storing CA certificate for project")
 		scope.Project.Status.CaCertificate = string(secret.Data["certificate-authority"])
+		scope.Project.Status.Status = "provisioned"
 		err := scope.Client.Status().Update(context.TODO(), scope.Project)
 		return ctrl.Result{Requeue: true}, err
 	}
