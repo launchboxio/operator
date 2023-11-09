@@ -5,6 +5,31 @@ import (
 	"text/template"
 )
 
+var ImageMapping = map[string]string{
+	"1.28.3":  "rancher/k3s:v1.28.3-k3s2",
+	"1.28.2":  "rancher/k3s:v1.28.2-k3s1",
+	"1.28.1":  "rancher/k3s:v1.28.1-k3s1",
+	"1.28.0":  "rancher/k3s:v1.28.0-rc1-k3s1",
+	"1.27.7":  "rancher/k3s:v1.27.7-k3s2",
+	"1.27.6":  "rancher/k3s:v1.27.6-k3s1",
+	"1.27.5":  "rancher/k3s:v1.27.5-k3s1",
+	"1.27.4":  "rancher/k3s:v1.27.4-k3s1",
+	"1.27.3":  "rancher/k3s:v1.27.3-k3s1",
+	"1.27.2":  "rancher/k3s:v1.27.2-k3s1",
+	"1.27.1":  "rancher/k3s:v1.27.1-k3s1",
+	"1.26.10": "rancher/k3s:v1.26.10-k3s2",
+	"1.26.9":  "rancher/k3s:v1.26.9-k3s1",
+	"1.26.8":  "rancher/k3s:v1.26.8-k3s1",
+	"1.26.7":  "rancher/k3s:v1.26.8-k3s1",
+	"1.26.6":  "rancher/k3s:v1.26.6-k3s1",
+	"1.26.5":  "rancher/k3s:v1.26.5-k3s1",
+	"1.26.4":  "rancher/k3s:v1.26.4-k3s1",
+	"1.26.3":  "rancher/k3s:v1.26.3-k3s1",
+	"1.26.2":  "rancher/k3s:v1.26.2-k3s1",
+	"1.26.1":  "rancher/k3s:v1.26.1-k3s1",
+	"1.26.0":  "rancher/k3s:v1.26.0-k3s2",
+}
+
 type ValuesTemplateArgs struct {
 	ProjectId   int
 	ProjectSlug string
@@ -19,6 +44,7 @@ type ValuesTemplateArgs struct {
 		ClassName string
 		Domain    string
 	}
+	Image string
 	Users []v1alpha1.ProjectUser
 }
 
@@ -26,6 +52,7 @@ var ValuesTemplate = template.Must(template.New("values").Parse(`
 globalAnnotations:
   "launchboxhq.io/project-id": "{{ .ProjectId }}"
 vcluster:
+  image: {{ .Image }}
   {{- with .Oidc }}
   extraArgs:
     - "--kube-apiserver-arg=--oidc-username-claim=preferred_username"
