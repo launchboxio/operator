@@ -48,8 +48,11 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 			}
 			ctrl.SetControllerReference(scope.Project, ns, scope.Client.Scheme())
 			// Create the namespace
-			err = scope.Client.Create(ctx, ns)
-			return ctrl.Result{Requeue: true}, err
+			if err = scope.Client.Create(ctx, ns); err != nil {
+				scope.Logger.Error(err, "Failed creating namespace")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{Requeue: true}, nil
 		}
 		scope.Logger.Error(err, "Failed lookup for namespace")
 		return ctrl.Result{}, err
@@ -70,7 +73,7 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 		if apierrors.IsNotFound(err) {
 			scope.Logger.Info("Creating new vcluster resource")
 			// Create the namespace
-			err = scope.Client.Create(ctx, &vclusterv1alpha1.VCluster{
+			if err = scope.Client.Create(ctx, &vclusterv1alpha1.VCluster{
 				ObjectMeta: defaultMeta,
 				Spec: vclusterv1alpha1.VClusterSpec{
 					ControlPlaneEndpoint: clusterv1.APIEndpoint{
@@ -84,8 +87,11 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 					},
 					KubernetesVersion: &kubernetesVersion,
 				},
-			})
-			return ctrl.Result{Requeue: true}, err
+			}); err != nil {
+				scope.Logger.Error(err, "Failed creating vcluster resource")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{Requeue: true}, nil
 		}
 		scope.Logger.Error(err, "Failed lookup for vcluster resource")
 		return ctrl.Result{}, err
@@ -105,7 +111,7 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 	}, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			scope.Logger.Info("Creating new cluster resource")
-			err = scope.Client.Create(ctx, &clusterv1.Cluster{
+			if err = scope.Client.Create(ctx, &clusterv1.Cluster{
 				ObjectMeta: defaultMeta,
 				Spec: clusterv1.ClusterSpec{
 					ControlPlaneRef: &v1.ObjectReference{
@@ -119,8 +125,11 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 						APIVersion: "infrastructure.cluster.x-k8s.io/v1alpha1",
 					},
 				},
-			})
-			return ctrl.Result{Requeue: true}, err
+			}); err != nil {
+				scope.Logger.Error(err, "Failed creating new cluster resource")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{Requeue: true}, nil
 		}
 		scope.Logger.Error(err, "Failed lookup for cluster resource")
 		return ctrl.Result{}, err
@@ -134,7 +143,7 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 	}, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			scope.Logger.Info("Waiting for vcluster secret to be available")
-			return ctrl.Result{RequeueAfter: time.Second * 5}, err
+			return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 		}
 		scope.Logger.Error(err, "Failed quering vcluster secret")
 		return ctrl.Result{}, err
@@ -145,8 +154,11 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 		scope.Logger.Info("Storing CA certificate for project")
 		scope.Project.Status.CaCertificate = string(secret.Data["certificate-authority"])
 		scope.Project.Status.Status = "provisioned"
-		err := scope.Client.Status().Update(context.TODO(), scope.Project)
-		return ctrl.Result{Requeue: true}, err
+		if err := scope.Client.Status().Update(context.TODO(), scope.Project); err != nil {
+			scope.Logger.Error(err, "Failed updating project status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Install any necessary crossplane providers

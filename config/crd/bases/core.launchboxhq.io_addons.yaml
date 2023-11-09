@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
-  name: clusters.core.launchboxhq.io
+  name: addons.core.launchboxhq.io
 spec:
   group: core.launchboxhq.io
   names:
-    kind: Cluster
-    listKind: ClusterList
-    plural: clusters
-    singular: cluster
-  scope: Namespaced
+    kind: Addon
+    listKind: AddonList
+    plural: addons
+    singular: addon
+  scope: Cluster
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Cluster is the Schema for the clusters API
+        description: Addon is the Schema for the addons API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,105 +33,30 @@ spec:
           metadata:
             type: object
           spec:
-            description: ClusterSpec defines the desired state of Cluster
+            description: AddonSpec defines the desired state of Addon
             properties:
-              agent:
-                properties:
-                  chartVersion:
-                    type: string
-                  enabled:
-                    type: boolean
-                  podAnnotations:
-                    additionalProperties:
-                      type: string
-                    type: object
-                  pullPolicy:
-                    description: PullPolicy describes a policy for if/when to pull
-                      a container image
-                    type: string
-                  repository:
-                    type: string
-                  tag:
-                    type: string
-                required:
-                - enabled
-                type: object
-              clusterId:
+              activationPolicy:
+                type: string
+              id:
                 type: integer
-              credentialsRef:
-                description: Foo is an example field of Cluster. Edit cluster_types.go
-                  to remove/update
-                properties:
-                  name:
-                    description: name is unique within a namespace to reference a
-                      secret resource.
-                    type: string
-                  namespace:
-                    description: namespace defines the space within which the secret
-                      name must be unique.
-                    type: string
-                type: object
-                x-kubernetes-map-type: atomic
-              ingress:
-                properties:
-                  className:
-                    description: ClassName represents the ingressClassName for guest
-                      clusters
-                    type: string
-                  domain:
-                    description: Domain is the root domain to use for guest cluster
-                      access
-                    type: string
-                required:
-                - className
-                - domain
-                type: object
-              launchbox:
-                properties:
-                  apiUrl:
-                    description: ApiUrl is the API endpoint for Launchbox
-                    type: string
-                  channel:
-                    description: Channel is the stream channel to subscribe to for
-                      events
-                    type: string
-                  streamUrl:
-                    description: StreamUrl is the endpoint for real time streaming
-                    type: string
-                  tokenUrl:
-                    description: TokenUrl is the endpoint for exchanging client credentials
-                      for a token
-                    type: string
-                type: object
-              oidc:
-                properties:
-                  clientId:
-                    description: ClientId is the OIDC ClientID to configure guest
-                      cluster's OIDC authentication
-                    type: string
-                  issuerUrl:
-                    description: IssuerUrl is the IssuerUrl to configure guest cluster's
-                      OIDC authentication
-                    type: string
-                required:
-                - clientId
-                - issuerUrl
-                type: object
+              name:
+                type: string
+              ociRegistry:
+                type: string
+              ociVersion:
+                type: string
+              pullPolicy:
+                type: string
             required:
-            - agent
-            - clusterId
-            - credentialsRef
-            - ingress
-            - launchbox
-            - oidc
+            - id
+            - name
+            - ociRegistry
+            - ociVersion
             type: object
           status:
-            description: ClusterStatus defines the observed state of Cluster
+            description: AddonStatus defines the observed state of Addon
             properties:
               conditions:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file'
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -199,6 +124,8 @@ spec:
                   - type
                   type: object
                 type: array
+              ready:
+                type: boolean
             required:
             - conditions
             type: object

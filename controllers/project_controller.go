@@ -84,7 +84,8 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}, cluster)
 	if err != nil {
 		logger.Error(err, "Failed looking up cluster configurations")
-		return ctrl.Result{RequeueAfter: time.Second * 10}, err
+		// TODO: We should update the project status as well
+		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
 
 	// Check conditions.Ready
