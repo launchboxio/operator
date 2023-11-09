@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0](https://github.com/launchboxio/operator/compare/v1.0.2...v1.1.0) (2023-11-09)
+
+
+### Features
+
+* Use projects kubernetes version ([a4de3ac](https://github.com/launchboxio/operator/commit/a4de3ac2fa6b2077e7cda94f26662799162dcb57))
+
 ### [1.0.2](https://github.com/launchboxio/operator/compare/v1.0.1...v1.0.2) (2023-11-08)
 
 
