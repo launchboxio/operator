@@ -203,6 +203,12 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 
 func getValuesArgs(scope *Scope) ValuesTemplateArgs {
 	project := scope.Project
+	image := ImageMapping["1.28.3"]
+	if scope.Project.Spec.KubernetesVersion != "" {
+		if val, ok := ImageMapping[scope.Project.Spec.KubernetesVersion]; ok {
+			image = val
+		}
+	}
 	args := ValuesTemplateArgs{
 		ProjectId:   project.Spec.Id,
 		ProjectSlug: project.Spec.Slug,
@@ -221,7 +227,9 @@ func getValuesArgs(scope *Scope) ValuesTemplateArgs {
 			Domain    string
 		}{
 			ClassName: scope.Cluster.Spec.Ingress.ClassName,
-			Domain:    scope.Cluster.Spec.Ingress.Domain},
+			Domain:    scope.Cluster.Spec.Ingress.Domain,
+		},
+		Image: image,
 	}
 	return args
 }
