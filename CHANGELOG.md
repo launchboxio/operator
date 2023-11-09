@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0](https://github.com/launchboxio/operator/compare/v1.1.0...v1.2.0) (2023-11-09)
+
+
+### Features
+
+* Add Addon resource for managing crossplane configurations ([9b8076f](https://github.com/launchboxio/operator/commit/9b8076f9fdb3b12653161f0631d8c188cdd92ec7))
+
+
+### Bug Fixes
+
+* Add controller reference to clusterapi resources ([66b297e](https://github.com/launchboxio/operator/commit/66b297e53ecabc4d75d9d0186005a3570c4bb603))
+
 ## [1.1.0](https://github.com/launchboxio/operator/compare/v1.0.2...v1.1.0) (2023-11-09)
 
 
