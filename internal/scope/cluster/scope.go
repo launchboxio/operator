@@ -36,6 +36,17 @@ func (s *Scope) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, e
 		return ctrl.Result{}, err
 	}
 
+	if s.Cluster.Spec.Agent.Enabled == false {
+		// TODO: Uninstall the agent if it was already installed
+		meta.SetStatusCondition(&s.Cluster.Status.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  metav1.ConditionTrue,
+			Reason:  "Installed",
+			Message: "",
+		})
+		return ctrl.Result{}, s.Client.Status().Update(ctx, s.Cluster)
+	}
+
 	values, err := generateAgentValues(s.Cluster.Spec)
 	if err != nil {
 		return ctrl.Result{}, err

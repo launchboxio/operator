@@ -74,6 +74,7 @@ type ClusterIngressSpec struct {
 }
 
 type ClusterAgentSpec struct {
+	Enabled        bool              `json:"enabled"`
 	Repository     string            `json:"repository,omitempty"`
 	Tag            string            `json:"tag,omitempty"`
 	PullPolicy     v1.PullPolicy     `json:"pullPolicy,omitempty"`

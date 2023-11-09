@@ -1,0 +1,17 @@
+apiVersion: core.launchboxhq.io/v1alpha1
+kind: Addon
+metadata:
+  labels:
+    app.kubernetes.io/name: addon
+    app.kubernetes.io/instance: addon-sample
+    app.kubernetes.io/part-of: operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: operator
+  name: redis
+spec:
+  ociRegistry: "ghcr.io/launchboxio/addons/packages/redis"
+  ociVersion: "latest"
+  pullPolicy: "Always"
+  activationPolicy: "Automatic"
+  name: redis
+  id: 1
