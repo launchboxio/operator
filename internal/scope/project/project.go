@@ -111,7 +111,7 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 	}, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			scope.Logger.Info("Creating new cluster resource")
-			if err = scope.Client.Create(ctx, &clusterv1.Cluster{
+			c := &clusterv1.Cluster{
 				ObjectMeta: defaultMeta,
 				Spec: clusterv1.ClusterSpec{
 					ControlPlaneRef: &v1.ObjectReference{
@@ -125,7 +125,9 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 						APIVersion: "infrastructure.cluster.x-k8s.io/v1alpha1",
 					},
 				},
-			}); err != nil {
+			}
+			ctrl.SetControllerReference(scope.Project, c, scope.Client.Scheme())
+			if err = scope.Client.Create(ctx, c); err != nil {
 				scope.Logger.Error(err, "Failed creating new cluster resource")
 				return ctrl.Result{}, err
 			}
