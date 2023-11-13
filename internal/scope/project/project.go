@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -175,10 +176,21 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 		if err := scope.reconcileAddon(addon, scope.Project); err != nil {
 			return ctrl.Result{}, err
 		}
-		//if err := scope.Client.Status().Update(context.TODO(), scope.Project); err != nil {
-		//	scope.Logger.Error(err, "Failed updating project status")
-		//	return ctrl.Result{}, err
-		//}
+		installationName := addon.InstallationName
+		if installationName == "" {
+			installationName = addon.AddonName
+		}
+		identifier := fmt.Sprintf("%s/%s", addon.AddonName, installationName)
+		addonStatus := scope.Project.GetAddonStatus(identifier)
+		meta.SetStatusCondition(&addonStatus.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  metav1.ConditionTrue,
+			Reason:  "Installed",
+			Message: "Addon has been installed",
+		})
+		if err := scope.Client.Status().Update(context.TODO(), scope.Project); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	statefulSet := &appsv1.StatefulSet{}

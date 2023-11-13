@@ -68,9 +68,13 @@ type ProjectUser struct {
 
 // ProjectStatus defines the observed state of Project
 type ProjectStatus struct {
-	Status        string         `json:"status,omitempty"`
-	CaCertificate string         `json:"caCertificate,omitempty"`
-	Addons        map[int]string `json:"addons,omitempty"`
+	Status        string                         `json:"status,omitempty"`
+	CaCertificate string                         `json:"caCertificate,omitempty"`
+	Addons        map[string]*ProjectAddonStatus `json:"addons,omitempty"`
+}
+
+type ProjectAddonStatus struct {
+	Conditions []metav1.Condition `json:"conditions"`
 }
 
 //+kubebuilder:object:root=true
@@ -98,15 +102,20 @@ func init() {
 	SchemeBuilder.Register(&Project{}, &ProjectList{})
 }
 
-// SetAddonStatus sets the status for a given subscription ID
-func (p *Project) SetAddonStatus(id int, status string) {
-	p.Status.Addons[id] = status
-}
-
 // RemoveAddonStatus finds an existing status for a given
 // subscription ID, and removes it
-func (p *Project) RemoveAddonStatus(id int) {
-	if _, ok := p.Status.Addons[id]; ok {
-		delete(p.Status.Addons, id)
+func (p *Project) RemoveAddonStatus(identifier string) {
+	if _, ok := p.Status.Addons[identifier]; ok {
+		delete(p.Status.Addons, identifier)
 	}
+}
+
+func (p *Project) GetAddonStatus(identifier string) *ProjectAddonStatus {
+	if status, ok := p.Status.Addons[identifier]; ok {
+		return status
+	}
+
+	status := &ProjectAddonStatus{Conditions: []metav1.Condition{}}
+	p.Status.Addons[identifier] = status
+	return status
 }
