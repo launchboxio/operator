@@ -35,6 +35,17 @@ type ProjectSpec struct {
 	IngressHost       string                `json:"ingressHost,omitempty"`
 	Users             []ProjectUser         `json:"users,omitempty"`
 	Crossplane        ProjectCrossplaneSpec `json:"crossplane,omitempty"`
+
+	Addons []ProjectAddonSpec `json:"addons,omitempty"`
+}
+
+type ProjectAddonSpec struct {
+	AddonName        string `json:"addonName"`
+	InstallationName string `json:"installationName,omitempty"`
+	SubscriptionId   int    `json:"subscriptionId"`
+	Group            string `json:"group"`
+	Version          string `json:"version"`
+	Resource         string `json:"resource"`
 }
 
 type ProjectCrossplaneSpec struct {
@@ -57,9 +68,9 @@ type ProjectUser struct {
 
 // ProjectStatus defines the observed state of Project
 type ProjectStatus struct {
-	Status        string            `json:"status,omitempty"`
-	CaCertificate string            `json:"caCertificate,omitempty"`
-	Addons        map[string]string `json:"addons,omitempty"`
+	Status        string         `json:"status,omitempty"`
+	CaCertificate string         `json:"caCertificate,omitempty"`
+	Addons        map[int]string `json:"addons,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -85,4 +96,17 @@ type ProjectList struct {
 
 func init() {
 	SchemeBuilder.Register(&Project{}, &ProjectList{})
+}
+
+// SetAddonStatus sets the status for a given subscription ID
+func (p *Project) SetAddonStatus(id int, status string) {
+	p.Status.Addons[id] = status
+}
+
+// RemoveAddonStatus finds an existing status for a given
+// subscription ID, and removes it
+func (p *Project) RemoveAddonStatus(id int) {
+	if _, ok := p.Status.Addons[id]; ok {
+		delete(p.Status.Addons, id)
+	}
 }
