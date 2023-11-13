@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -171,6 +172,26 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 	}
 
 	// TODO: Install any subscribed addons
+	for _, addon := range scope.Project.Spec.Addons {
+		if err := scope.reconcileAddon(addon, scope.Project); err != nil {
+			return ctrl.Result{}, err
+		}
+		installationName := addon.InstallationName
+		if installationName == "" {
+			installationName = addon.AddonName
+		}
+		identifier := fmt.Sprintf("%s/%s", addon.AddonName, installationName)
+		addonStatus := scope.Project.GetAddonStatus(identifier)
+		meta.SetStatusCondition(&addonStatus.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  metav1.ConditionTrue,
+			Reason:  "Installed",
+			Message: "Addon has been installed",
+		})
+		if err := scope.Client.Status().Update(context.TODO(), scope.Project); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	statefulSet := &appsv1.StatefulSet{}
 	if err := scope.Client.Get(ctx, types.NamespacedName{
@@ -288,4 +309,40 @@ func (scope *Scope) installProviders(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *Scope) reconcileAddon(projectAddonSpec v1alpha1.ProjectAddonSpec, project *v1alpha1.Project) error {
+	name := projectAddonSpec.AddonName
+	if projectAddonSpec.InstallationName != "" {
+		name = projectAddonSpec.InstallationName
+	}
+	gvr := schema.GroupVersionResource{
+		Group:    projectAddonSpec.Group,
+		Version:  projectAddonSpec.Version,
+		Resource: projectAddonSpec.Resource,
+	}
+	addon := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": projectAddonSpec.Group + "/" + projectAddonSpec.Version,
+			"kind":       projectAddonSpec.Resource,
+			"metadata": map[string]interface{}{
+				"name":      name,
+				"namespace": project.Spec.Slug,
+			},
+			"spec": map[string]interface{}{
+				"providerConfigRef": project.Spec.Slug,
+			},
+		},
+	}
+	_, err := s.DynamicClient.Resource(gvr).Namespace(project.Spec.Slug).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			_, err := s.DynamicClient.Resource(gvr).Namespace(project.Spec.Slug).Create(context.TODO(), addon, metav1.CreateOptions{})
+			return err
+		}
+		return err
+	}
+	// TODO: Rather than always update, we should only update if needed
+	_, err = s.DynamicClient.Resource(gvr).Namespace(project.Spec.Slug).Update(context.TODO(), addon, metav1.UpdateOptions{})
+	return err
 }

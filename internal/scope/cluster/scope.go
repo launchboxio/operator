@@ -105,7 +105,6 @@ func (s *Scope) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, e
 		Message: fmt.Sprintf("Chart %s has been installed", chartSpec.Version),
 	})
 	return ctrl.Result{}, s.Client.Status().Update(ctx, s.Cluster)
-
 }
 
 func generateAgentValues(spec v1alpha1.ClusterSpec) ([]byte, error) {
