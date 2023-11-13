@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0](https://github.com/launchboxio/operator/compare/v1.2.0...v1.3.0) (2023-11-13)
+
+
+### Features
+
+* Fix project addon installation ([df1d4e6](https://github.com/launchboxio/operator/commit/df1d4e6d5ed936d3b393602bc61c7e25e885cce9))
+* Reconcile required addons for a project ([e2beb48](https://github.com/launchboxio/operator/commit/e2beb48a25484eba58e4863d122ee7bd868fc59f))
+
 ## [1.2.0](https://github.com/launchboxio/operator/compare/v1.1.0...v1.2.0) (2023-11-09)
 
 
