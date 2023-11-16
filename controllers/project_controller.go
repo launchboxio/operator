@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	projectscope "github.com/launchboxio/operator/internal/scope/project"
-	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -31,7 +30,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"os"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -117,8 +115,6 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.Project{}).
 		Owns(&v1.Namespace{}).
-		Owns(&clusterv1.Cluster{}).
-		Owns(&vclusterv1alpha1.VCluster{}).
 		Complete(r)
 }
 

@@ -2,9 +2,6 @@
 
 # Ensure minikube is up and running
 
-# Install cluster-api and vcluster provider
-clusterctl init --infrastructure vcluster
-
 # Install crossplane and base provider packages
 helm upgrade --install crossplane \
   --namespace crossplane-system \
