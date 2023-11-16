@@ -3,16 +3,16 @@ module github.com/launchboxio/operator
 go 1.21
 
 require (
+	github.com/crossplane/crossplane v1.14.0
 	github.com/go-logr/logr v1.2.4
-	github.com/loft-sh/cluster-api-provider-vcluster v0.1.3
 	github.com/mittwald/go-helm-client v0.12.3
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.10
 	github.com/spf13/cobra v1.7.0
+	helm.sh/helm/v3 v3.13.1
 	k8s.io/api v0.28.3
 	k8s.io/apimachinery v0.28.3
 	k8s.io/client-go v0.28.3
-	sigs.k8s.io/cluster-api v1.5.3
 	sigs.k8s.io/controller-runtime v0.16.3
 )
 
@@ -29,12 +29,9 @@ require (
 	github.com/Microsoft/hcsshim v0.11.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
-	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/containerd/containerd v1.7.6 // indirect
-	github.com/crossplane/crossplane v1.14.0 // indirect
 	github.com/crossplane/crossplane-runtime v1.14.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -147,7 +144,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	helm.sh/helm/v3 v3.13.1 // indirect
 	k8s.io/apiextensions-apiserver v0.28.3 // indirect
 	k8s.io/apiserver v0.28.3 // indirect
 	k8s.io/cli-runtime v0.28.2 // indirect

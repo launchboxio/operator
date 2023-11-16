@@ -8,12 +8,10 @@ import (
 	crossplanev1 "github.com/crossplane/crossplane/apis/pkg/v1"
 	corev1alpha1 "github.com/launchboxio/operator/api/v1alpha1"
 	"github.com/launchboxio/operator/controllers"
-	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -115,8 +113,6 @@ func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 
-	utilruntime.Must(clusterv1.AddToScheme(scheme))
-	utilruntime.Must(vclusterv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(crossplanev1.AddToScheme(scheme))
 	//utilruntime.Must(crossplanehelm.AddToScheme(scheme))
 	//utilruntime.Must(crossplanek8s.AddToScheme(scheme))

@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/launchboxio/operator/api/v1alpha1"
-	vclusterv1alpha1 "github.com/loft-sh/cluster-api-provider-vcluster/api/v1alpha1"
+	helmclient "github.com/mittwald/go-helm-client"
+	"helm.sh/helm/v3/pkg/repo"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
@@ -32,11 +32,20 @@ type Scope struct {
 
 func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	identifier := scope.Project.Spec.Slug
-	kubernetesVersion := scope.Project.Spec.KubernetesVersion
-	defaultMeta := metav1.ObjectMeta{
-		Name:      identifier,
+	helmClient, err := helmclient.New(&helmclient.Options{
 		Namespace: identifier,
+	})
+
+	if err != nil {
+		return ctrl.Result{}, err
 	}
+
+	// TODO: We should probably add this in initialization somewhere, not in each reconciliation loop
+	err = helmClient.AddOrUpdateChartRepo(repo.Entry{
+		Name: "loft-sh",
+		URL:  "https://charts.loft.sh",
+	})
+
 	//  Ensure our namespace is created
 	namespace := &v1.Namespace{}
 	if err := scope.Client.Get(ctx, types.NamespacedName{Name: identifier}, namespace); err != nil {
@@ -65,76 +74,19 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	// Create the infrastructure and vcluster resource
-	infrastructure := &vclusterv1alpha1.VCluster{}
-	if err := scope.Client.Get(ctx, types.NamespacedName{
-		Name:      identifier,
-		Namespace: identifier,
-	}, infrastructure); err != nil {
-		if apierrors.IsNotFound(err) {
-			scope.Logger.Info("Creating new vcluster resource")
-			// Create the namespace
-			if err = scope.Client.Create(ctx, &vclusterv1alpha1.VCluster{
-				ObjectMeta: defaultMeta,
-				Spec: vclusterv1alpha1.VClusterSpec{
-					ControlPlaneEndpoint: clusterv1.APIEndpoint{
-						Host: "",
-						Port: 0,
-					},
-					HelmRelease: &vclusterv1alpha1.VirtualClusterHelmRelease{
-						Chart: vclusterv1alpha1.VirtualClusterHelmChart{},
-						// TODO: We have to reconcile these as well, in the event they change
-						Values: values.String(),
-					},
-					KubernetesVersion: &kubernetesVersion,
-				},
-			}); err != nil {
-				scope.Logger.Error(err, "Failed creating vcluster resource")
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{Requeue: true}, nil
-		}
-		scope.Logger.Error(err, "Failed lookup for vcluster resource")
-		return ctrl.Result{}, err
+	chartSpec := &helmclient.ChartSpec{
+		ReleaseName: identifier,
+		ChartName:   "loft-sh/vcluster",
+		Namespace:   identifier,
+		Wait:        true,
+		ValuesYaml:  values.String(),
+		Timeout:     time.Minute * 1,
 	}
 
-	if values.String() != infrastructure.Spec.HelmRelease.Values {
-		scope.Logger.Info("Updating helm values")
-		infrastructure.Spec.HelmRelease.Values = values.String()
-		err := scope.Client.Update(ctx, infrastructure)
-		return ctrl.Result{Requeue: true}, err
-	}
-
-	cluster := &clusterv1.Cluster{}
-	if err := scope.Client.Get(ctx, types.NamespacedName{
-		Name:      identifier,
-		Namespace: identifier,
-	}, cluster); err != nil {
-		if apierrors.IsNotFound(err) {
-			scope.Logger.Info("Creating new cluster resource")
-			c := &clusterv1.Cluster{
-				ObjectMeta: defaultMeta,
-				Spec: clusterv1.ClusterSpec{
-					ControlPlaneRef: &v1.ObjectReference{
-						Name:       identifier,
-						Kind:       "VCluster",
-						APIVersion: "infrastructure.cluster.x-k8s.io/v1alpha1",
-					},
-					InfrastructureRef: &v1.ObjectReference{
-						Name:       identifier,
-						Kind:       "VCluster",
-						APIVersion: "infrastructure.cluster.x-k8s.io/v1alpha1",
-					},
-				},
-			}
-			ctrl.SetControllerReference(scope.Project, c, scope.Client.Scheme())
-			if err = scope.Client.Create(ctx, c); err != nil {
-				scope.Logger.Error(err, "Failed creating new cluster resource")
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{Requeue: true}, nil
-		}
-		scope.Logger.Error(err, "Failed lookup for cluster resource")
+	// TODO: Might not be most efficient, but we'll just always install or upgrade
+	_, err = helmClient.InstallOrUpgradeChart(context.TODO(), chartSpec, nil)
+	if err != nil {
+		scope.Logger.Error(err, "Failed to install / upgrade helm chart")
 		return ctrl.Result{}, err
 	}
 
@@ -216,7 +168,6 @@ func (scope *Scope) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.R
 			scope.Logger.Error(err, "Failed updating desired replicas")
 			return ctrl.Result{}, err
 		}
-
 	}
 
 	// If paused, we also need to terminate all the running pods
@@ -345,4 +296,8 @@ func (s *Scope) reconcileAddon(projectAddonSpec v1alpha1.ProjectAddonSpec, proje
 	// TODO: Rather than always update, we should only update if needed
 	_, err = s.DynamicClient.Resource(gvr).Namespace(project.Spec.Slug).Update(context.TODO(), addon, metav1.UpdateOptions{})
 	return err
+}
+
+func isReleaseNotFoundError(err error) bool {
+	return err.Error() == "release: not found"
 }
