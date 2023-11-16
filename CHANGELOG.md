@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0](https://github.com/launchboxio/operator/compare/v1.3.0...v1.4.0) (2023-11-16)
+
+
+### Features
+
+* Use helm client directly, remove Cluster API ([1c6ca4b](https://github.com/launchboxio/operator/commit/1c6ca4b7713935614fb3f38c9790432ff9cfd39f))
+
+
+### Bug Fixes
+
+* formatting ([4add403](https://github.com/launchboxio/operator/commit/4add40380c05d679a42dd6d6ff29af71323565e7))
+
 ## [1.3.0](https://github.com/launchboxio/operator/compare/v1.2.0...v1.3.0) (2023-11-13)
 
 
