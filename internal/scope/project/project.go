@@ -19,6 +19,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"time"
 )
 
@@ -270,7 +271,7 @@ func (s *Scope) reconcileAddon(projectAddonSpec v1alpha1.ProjectAddonSpec, proje
 	gvr := schema.GroupVersionResource{
 		Group:    projectAddonSpec.Group,
 		Version:  projectAddonSpec.Version,
-		Resource: projectAddonSpec.Resource,
+		Resource: strings.ToLower(projectAddonSpec.Resource) + "s",
 	}
 	addon := &unstructured.Unstructured{
 		Object: map[string]interface{}{
