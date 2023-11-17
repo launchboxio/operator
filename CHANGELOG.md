@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+### [1.4.1](https://github.com/launchboxio/operator/compare/v1.4.0...v1.4.1) (2023-11-17)
+
+
+### Bug Fixes
+
+* Use lowercase claim name for GVR ([3c413af](https://github.com/launchboxio/operator/commit/3c413af952341d57452bf361dc77d0de1748af47))
+
 ## [1.4.0](https://github.com/launchboxio/operator/compare/v1.3.0...v1.4.0) (2023-11-16)
 
 
